@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "LoRa radio service configuration",
+  "type": "object",
+  "required": ["board"],
+  "additionalProperties": false,
+  "properties": {
+    "board": {
+      "type": "string",
+      "enum": ["heltec", "lilygo"],
+      "description": "Supported board profile and pin mapping."
+    }
+  }
+}

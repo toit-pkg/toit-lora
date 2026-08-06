@@ -37,6 +37,35 @@ main:
 See `examples/heltec-ping.toit` and `examples/lilygo-pong.toit` for complete
 resource cleanup and a bidirectional test.
 
+## Raw-radio service
+
+Applications in other containers can use the same `Radio` API through the
+versioned `lora.radio-service` service. The first client that operates the
+radio owns it until that client closes; competing clients receive
+`LORA_RADIO_BUSY` instead of racing the modem configuration.
+
+Install the provider for one of the tested boards:
+
+```sh
+jag container install lora-radio service/radio.toit \
+    --device DEVICE \
+    -D board=heltec
+```
+
+Then run a client in another container:
+
+```sh
+jag run examples/radio-service-client.toit --device DEVICE
+```
+
+Direct use remains available and does not import `system.services`.
+
+## Packages
+
+- The root package contains the plain LoRa drivers and raw service API.
+- `service/radio.toit` is the configurable provider container for the tested
+  boards.
+
 ## Verification
 
 ```sh
