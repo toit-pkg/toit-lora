@@ -1,3 +1,5 @@
 dependencies:
   lora:
     path: ..
+  lorawan:
+    path: ../lorawan

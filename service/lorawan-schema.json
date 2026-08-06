@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "LoRaWAN end-device service configuration",
+  "type": "object",
+  "required": ["board", "region", "app-key", "join-eui", "device-eui"],
+  "additionalProperties": false,
+  "properties": {
+    "board": {
+      "type": "string",
+      "enum": ["heltec", "lilygo"]
+    },
+    "region": {
+      "type": "string",
+      "enum": ["eu868", "us915"]
+    },
+    "app-key": {
+      "type": "string",
+      "pattern": "^[0-9A-Fa-f]{32}$"
+    },
+    "join-eui": {
+      "type": "string",
+      "pattern": "^[0-9A-Fa-f]{16}$"
+    },
+    "device-eui": {
+      "type": "string",
+      "pattern": "^[0-9A-Fa-f]{16}$"
+    },
+    "initial-device-nonce": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 65535,
+      "default": 0
+    },
+    "data-rate": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 13,
+      "default": 0
+    },
+    "tx-power": {
+      "type": "integer",
+      "minimum": -9,
+      "maximum": 22,
+      "default": 14
+    },
+    "receive-window-ms": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 1000
+    },
+    "storage-path": {
+      "type": "string",
+      "description": "Flash bucket path for DevNonce, session keys, and frame counters."
+    }
+  }
+}

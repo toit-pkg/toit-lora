@@ -63,6 +63,26 @@ class ClassA:
       --port/int=1
       --confirmed/bool=false
       --adr/bool=false:
+    return send payload
+        --port=port
+        --confirmed=confirmed
+        --adr=adr
+        --on-counter-reserved=:
+
+  /**
+  Sends one Class A uplink and invokes $on-counter-reserved after reserving its
+    frame counter and before touching the radio.
+
+  Calls $on-counter-reserved after incrementing the uplink counter and before
+    touching the radio. Persistent providers use this hook to make counter
+    reuse impossible after a reset.
+  */
+  send -> frames.Downlink?
+      payload/io.Data
+      --port/int=1
+      --confirmed/bool=false
+      --adr/bool=false
+      [--on-counter-reserved]:
     if not session: throw "LORAWAN_NOT_ACTIVATED"
     bytes := ByteArray payload.byte-size
     payload.write-to-byte-array bytes --at=0 0 payload.byte-size
@@ -77,9 +97,10 @@ class ClassA:
         --port=port
         --confirmed=confirmed
         --adr=adr
+    session.uplink-counter++
+    on-counter-reserved.call
     configure_ uplink
     radio_.transmit frame
-    session.uplink-counter++
     transmitted-at := Time.monotonic-us
     return receive-data-windows_ uplink transmitted-at
 
