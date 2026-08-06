@@ -1,15 +1,18 @@
 # LoRa for Toit
 
-Clean LoRa packet-radio driver for the Semtech SX126x family.
+Clean LoRa packet-radio drivers for Semtech SX126x and SX127x transceivers.
+The two chip families implement the same blocking `Radio` API while retaining
+their different command/register transports internally.
 
 ## Supported hardware
 
 | Board | MCU | Radio | SPI | Control |
 | --- | --- | --- | --- | --- |
 | Heltec WiFi LoRa 32 V3 | ESP32-S3 | SX1262 | SCK 9, MOSI 10, MISO 11, CS 8 | RESET 12, BUSY 13, DIO1 14, DIO2 RF switch, 1.8 V DIO3 TCXO |
+| LILYGO T3 LoRa32 V1.6 | ESP32 | SX1276 | SCK 5, MOSI 27, MISO 19, CS 18 | RESET 23, DIO0 26 |
 
-The board was probed from Toit and exchanged packets at 868.1 MHz. The
-examples retain the exact tested pin map.
+Both boards were probed from Toit and exchanged packets in both directions at
+868.1 MHz. The examples retain these exact tested pin maps.
 
 ## Direct use
 
@@ -31,8 +34,16 @@ main:
   radio.transmit "hello"
 ```
 
-See `examples/heltec-ping.toit` for complete resource cleanup and a
-bidirectional test.
+See `examples/heltec-ping.toit` and `examples/lilygo-pong.toit` for complete
+resource cleanup and a bidirectional test.
+
+The old `toitware/toit-lora` source was reviewed. Its sole driver was an
+SX127x register implementation named `Sx1262`; this implementation replaces it
+with separate, silicon-correct drivers.
+
+The `toitlang/qemu` source and releases were also checked. They do not model an
+SX126x, SX127x, or LoRa peripheral, so real-board tests provide the useful
+hardware coverage here.
 
 ## Verification
 
