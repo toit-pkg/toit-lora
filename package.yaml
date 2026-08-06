@@ -1,0 +1,4 @@
+name: lora
+description: LoRa radio driver for the Semtech SX126x family.
+environment:
+  sdk: ^2.0.0-alpha.197
