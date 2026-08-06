@@ -1,0 +1,4 @@
+name: lorawan
+description: LoRaWAN 1.0.x framing, cryptography, regions, and Class A device support.
+environment:
+  sdk: ^2.0.0-alpha.197
