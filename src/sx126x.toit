@@ -11,8 +11,8 @@ import .radio as radio
 /**
 Driver implementation for the Semtech SX1262 LoRa radio.
 
-The caller owns the SPI device and GPIO pins and must close them after closing
-  the driver.
+The caller owns the SPI device. The driver owns its GPIO pins and releases them
+  when closed.
 */
 class Sx1262 implements radio.Radio:
   static SET-SLEEP_ ::= 0x84
@@ -61,8 +61,8 @@ class Sx1262 implements radio.Radio:
 
   device_/spi.Device
   busy_/gpio.Pin
-  reset_/gpio.Pin?
-  dio1_/gpio.Pin?
+  reset_/gpio.Pin? := null
+  dio1_/gpio.Pin? := null
   mutex_/monitor.Mutex ::= monitor.Mutex
   configuration_/radio.Configuration := radio.Configuration
   calibrated-band_/int := -1
@@ -71,50 +71,55 @@ class Sx1262 implements radio.Radio:
   /**
   Constructs and probes an SX126x attached to $device.
 
-  The $busy pin is mandatory. The optional $reset and $dio1 pins are
-    configured by the driver but remain owned by the caller. $tcxo-voltage
-    selects the DIO3-controlled TCXO voltage in millivolts; zero disables DIO3
-    TCXO control. $dio2-rf-switch enables the radio's automatic RF switch.
+  The $busy pin number is mandatory. The optional $reset and $dio1 pin numbers
+    are opened and owned by the driver. $tcxo-voltage selects the
+    DIO3-controlled TCXO voltage in millivolts; zero disables DIO3 TCXO control.
+    $dio2-rf-switch enables the radio's automatic RF switch.
   */
   constructor
       device/spi.Device
-      busy/gpio.Pin
-      --reset/gpio.Pin?=null
-      --dio1/gpio.Pin?=null
+      busy/int
+      --reset/int?=null
+      --dio1/int?=null
       --tcxo-voltage/int=0
       --dio2-rf-switch/bool=false:
     device_ = device
-    busy_ = busy
-    reset_ = reset
-    dio1_ = dio1
-    busy_.configure --input
-    if dio1_: dio1_.configure --input
-    if reset_:
-      reset_.configure --output --value=1
-      reset-radio_
-    wait-while-busy_
-    status := get-status_
-    if status == 0 or status == 0xff: throw "SX126X_NOT_FOUND"
-    if tcxo-voltage > 0: configure-tcxo_ tcxo-voltage
-    write-command_ SET-STANDBY_ #[STANDBY-RC_]
-    write-command_ SET-REGULATOR-MODE_ #[0x01]
-    write-command_ CALIBRATE_ #[0x7f]
-    if dio2-rf-switch:
-      write-command_ SET-DIO2-AS-RF-SWITCH-CTRL_ #[0x01]
-    write-command_ SET-PACKET-TYPE_ #[PACKET-TYPE-LORA_]
-    write-command_ SET-BUFFER-BASE-ADDRESS_ #[0x00, 0x00]
-    write-command_ SET-RX-TX-FALLBACK-MODE_ #[FALLBACK-STANDBY-RC_]
-    clamp := read-register-byte_ REG-TX-CLAMP-CONFIG_
-    write-register-byte_ REG-TX-CLAMP-CONFIG_ (clamp | 0x1e)
-    write-register-byte_ REG-OCP-CONFIG_ 0x38
-    configure configuration_
+    busy_ = gpio.Pin busy
+    succeeded := false
+    try:
+      if reset != null: reset_ = gpio.Pin reset
+      if dio1 != null: dio1_ = gpio.Pin dio1
+      busy_.configure --input
+      if dio1_: dio1_.configure --input
+      if reset_:
+        reset_.configure --output --value=1
+        reset-radio_
+      wait-while-busy_
+      status := get-status_
+      if status == 0 or status == 0xff: throw "SX126X_NOT_FOUND"
+      if tcxo-voltage > 0: configure-tcxo_ tcxo-voltage
+      write-command_ SET-STANDBY_ #[STANDBY-RC_]
+      write-command_ SET-REGULATOR-MODE_ #[0x01]
+      write-command_ CALIBRATE_ #[0x7f]
+      if dio2-rf-switch:
+        write-command_ SET-DIO2-AS-RF-SWITCH-CTRL_ #[0x01]
+      write-command_ SET-PACKET-TYPE_ #[PACKET-TYPE-LORA_]
+      write-command_ SET-BUFFER-BASE-ADDRESS_ #[0x00, 0x00]
+      write-command_ SET-RX-TX-FALLBACK-MODE_ #[FALLBACK-STANDBY-RC_]
+      clamp := read-register-byte_ REG-TX-CLAMP-CONFIG_
+      write-register-byte_ REG-TX-CLAMP-CONFIG_ (clamp | 0x1e)
+      write-register-byte_ REG-OCP-CONFIG_ 0x38
+      configure configuration_
+      succeeded = true
+    finally:
+      if not succeeded: close-pins_
 
   /** See $radio.Radio.configure. */
   configure configuration/radio.Configuration -> none:
     configuration.validate
-    if configuration.frequency < 150_000_000 or configuration.frequency > 960_000_000:
+    if not 150_000_000 <= configuration.frequency <= 960_000_000:
       throw "SX126X_INVALID_FREQUENCY"
-    if configuration.tx-power < -9 or configuration.tx-power > 22:
+    if not -9 <= configuration.tx-power <= 22:
       throw "SX126X_INVALID_TX_POWER"
     mutex_.do:
       ensure-open_
@@ -149,7 +154,7 @@ class Sx1262 implements radio.Radio:
         write-command_ SET-STANDBY_ #[STANDBY-RC_]
 
   /** See $radio.Radio.receive. */
-  receive --timeout-ms/int=-1 -> radio.Packet?:
+  receive --timeout-ms/int?=null -> radio.Packet?:
     return mutex_.do:
       ensure-open_
       write-command_ SET-STANDBY_ #[STANDBY-RC_]
@@ -162,12 +167,17 @@ class Sx1262 implements radio.Radio:
       set-irq-mapping_ irq-mask irq-mask
       clear-irq_ IRQ-ALL_
       write-command_ SET-RX_ (uint24_ 0xffffff)
-      deadline := timeout-ms < 0
+      deadline := timeout-ms == null
           ? null
           : Time.monotonic-us + timeout-ms * 1_000
       try:
         while true:
-          irq := get-irq_
+          remaining-ms/int? := null
+          if deadline:
+            remaining-us := deadline - Time.monotonic-us
+            if remaining-us <= 0: return null
+            remaining-ms = (remaining-us + 999) / 1_000
+          irq := wait-for-irq_ irq-mask --timeout-ms=remaining-ms
           if (irq & (IRQ-TIMEOUT_ | IRQ-HEADER-ERROR_ | IRQ-CRC-ERROR_)) != 0:
             return null
           if (irq & IRQ-HEADER-VALID_) != 0:
@@ -182,8 +192,6 @@ class Sx1262 implements radio.Radio:
             rssi := -packet-status[0].to-float / 2.0
             snr := signed-byte_ packet-status[1]
             return radio.Packet payload rssi (snr.to-float / 4.0)
-          if deadline and Time.monotonic-us >= deadline: return null
-          sleep --ms=1
       finally:
         clear-irq_ IRQ-ALL_
         write-command_ SET-STANDBY_ #[STANDBY-RC_]
@@ -194,25 +202,33 @@ class Sx1262 implements radio.Radio:
       ensure-open_
       write-command_ SET-STANDBY_ #[STANDBY-RC_]
 
-  /** See $radio.Radio.sleep-radio. */
-  sleep-radio -> none:
+  /** See $radio.Radio.sleep. */
+  sleep -> none:
     mutex_.do:
       ensure-open_
-      write-command_ SET-SLEEP_ #[0x00] --wait-after=false
+      write-command_ SET-SLEEP_ #[0x00] --wait=false
 
   /** See $radio.Radio.close. */
   close -> none:
     if closed_: return
     mutex_.do:
       if closed_: return
-      write-command_ SET-SLEEP_ #[0x00] --wait-after=false
-      closed_ = true
+      try:
+        write-command_ SET-SLEEP_ #[0x00] --wait=false
+      finally:
+        closed_ = true
+        close-pins_
+
+  close-pins_ -> none:
+    if dio1_: dio1_.close
+    if reset_: reset_.close
+    busy_.close
 
   reset-radio_ -> none:
     reset_.set 0
-    sleep --ms=2
+    sleep-ms_ 2
     reset_.set 1
-    sleep --ms=10
+    sleep-ms_ 10
 
   ensure-open_ -> none:
     if closed_: throw "LORA_CLOSED"
@@ -296,34 +312,43 @@ class Sx1262 implements radio.Radio:
   clear-irq_ mask/int -> none:
     write-command_ CLEAR-IRQ-STATUS_ #[(mask >> 8) & 0xff, mask & 0xff]
 
-  wait-for-irq_ mask/int --timeout-ms/int -> int:
-    deadline := timeout-ms < 0
+  wait-for-irq_ mask/int --timeout-ms/int?=null -> int:
+    deadline := timeout-ms == null
         ? null
         : Time.monotonic-us + timeout-ms * 1_000
     while true:
       irq := get-irq_
       if (irq & mask) != 0: return irq
       if deadline and Time.monotonic-us >= deadline: return IRQ-TIMEOUT_
-      sleep --ms=1
+      if dio1_:
+        if deadline:
+          remaining := deadline - Time.monotonic-us
+          if remaining <= 0: return IRQ-TIMEOUT_
+          exception := catch --unwind=(: it != DEADLINE-EXCEEDED-ERROR):
+            with-timeout --us=remaining: dio1_.wait-for 1
+          if exception: return IRQ-TIMEOUT_
+        else:
+          dio1_.wait-for 1
+      else:
+        sleep-ms_ 1
     unreachable
 
   wait-while-busy_ --timeout-ms/int=1_000 -> none:
-    deadline := Time.monotonic-us + timeout-ms * 1_000
-    while busy_.get != 0:
-      if Time.monotonic-us >= deadline: throw "SX126X_BUSY_TIMEOUT"
-      sleep --ms=1
+    if busy_.get == 0: return
+    exception := catch --unwind=(: it != DEADLINE-EXCEEDED-ERROR):
+      with-timeout --ms=timeout-ms: busy_.wait-for 0
+    if exception: throw "SX126X_BUSY_TIMEOUT"
 
-  write-command_
+  write-command_ -> none
       opcode/int
       data/ByteArray
-      --wait-after/bool=true
-      -> none:
+      --wait/bool=true:
     wait-while-busy_
     command := ByteArray (data.size + 1)
     command[0] = opcode
     command.replace 1 data
     device_.write command
-    if wait-after: wait-while-busy_
+    if wait: wait-while-busy_
 
   read-command_ opcode/int header/ByteArray response-size/int -> ByteArray:
     wait-while-busy_
@@ -395,11 +420,11 @@ class Sx1262 implements radio.Radio:
     throw "SX126X_INVALID_TCXO_VOLTAGE"
 
   static image-calibration-band_ frequency/int -> int:
-    if frequency >= 430_000_000 and frequency <= 440_000_000: return 0
-    if frequency >= 470_000_000 and frequency <= 510_000_000: return 1
-    if frequency >= 779_000_000 and frequency <= 787_000_000: return 2
-    if frequency >= 863_000_000 and frequency <= 870_000_000: return 3
-    if frequency >= 902_000_000 and frequency <= 928_000_000: return 4
+    if 430_000_000 <= frequency <= 440_000_000: return 0
+    if 470_000_000 <= frequency <= 510_000_000: return 1
+    if 779_000_000 <= frequency <= 787_000_000: return 2
+    if 863_000_000 <= frequency <= 870_000_000: return 3
+    if 902_000_000 <= frequency <= 928_000_000: return 4
     throw "SX126X_UNSUPPORTED_CALIBRATION_BAND"
 
   static image-calibration-values_ band/int -> ByteArray:
@@ -412,3 +437,6 @@ class Sx1262 implements radio.Radio:
 
   static signed-byte_ value/int -> int:
     return value >= 0x80 ? value - 0x100 : value
+
+sleep-ms_ milliseconds/int -> none:
+  sleep --ms=milliseconds

@@ -43,39 +43,30 @@ class Configuration:
   tx-power/int
 
   constructor
-      --frequency/int=868_100_000
-      --bandwidth/int=125_000
-      --spreading-factor/int=7
-      --coding-rate/int=5
-      --preamble-length/int=8
-      --crc/bool=true
-      --invert-iq/bool=false
-      --sync-word/int=PRIVATE-SYNC-WORD
-      --tx-power/int=14:
-    this.frequency = frequency
-    this.bandwidth = bandwidth
-    this.spreading-factor = spreading-factor
-    this.coding-rate = coding-rate
-    this.preamble-length = preamble-length
-    this.crc = crc
-    this.invert-iq = invert-iq
-    this.sync-word = sync-word
-    this.tx-power = tx-power
+      --.frequency/int=868_100_000
+      --.bandwidth/int=125_000
+      --.spreading-factor/int=7
+      --.coding-rate/int=5
+      --.preamble-length/int=8
+      --.crc/bool=true
+      --.invert-iq/bool=false
+      --.sync-word/int=PRIVATE-SYNC-WORD
+      --.tx-power/int=14:
     validate
 
   /** Validates this configuration. */
   validate -> none:
-    if frequency < 137_000_000 or frequency > 1_020_000_000:
+    if not 137_000_000 <= frequency <= 1_020_000_000:
       throw "LORA_INVALID_FREQUENCY"
-    if spreading-factor < 7 or spreading-factor > 12:
+    if not 7 <= spreading-factor <= 12:
       throw "LORA_INVALID_SPREADING_FACTOR"
-    if coding-rate < 5 or coding-rate > 8:
+    if not 5 <= coding-rate <= 8:
       throw "LORA_INVALID_CODING_RATE"
-    if preamble-length < 4 or preamble-length > 65_535:
+    if not 4 <= preamble-length <= 65_535:
       throw "LORA_INVALID_PREAMBLE_LENGTH"
-    if sync-word < 0 or sync-word > 0xff:
+    if not 0 <= sync-word <= 0xff:
       throw "LORA_INVALID_SYNC_WORD"
-    if tx-power < -9 or tx-power > 22:
+    if not -9 <= tx-power <= 22:
       throw "LORA_INVALID_TX_POWER"
 
 /**
@@ -108,15 +99,15 @@ interface Radio:
     $timeout-ms expires.
 
   Once a header is detected, the call may continue past $timeout-ms while the
-    remainder of the packet is received. A negative timeout waits indefinitely.
+    remainder of the packet is received. A null timeout waits indefinitely.
   */
-  receive --timeout-ms/int=-1 -> Packet?
+  receive --timeout-ms/int?=null -> Packet?
 
   /** Puts the radio into standby mode. */
   standby -> none
 
   /** Puts the radio into its lowest-power sleep mode. */
-  sleep-radio -> none
+  sleep -> none
 
   /** Leaves the radio in a safe low-power state. */
   close -> none

@@ -14,7 +14,6 @@ examples retain the exact tested pin map.
 ## Direct use
 
 ```toit
-import gpio
 import spi
 import lora
 import lora.sx1262
@@ -22,15 +21,13 @@ import lora.sx1262
 main:
   bus := spi.Bus --clock=9 --mosi=10 --miso=11
   device := bus.device --cs=8 --frequency=4_000_000
-  busy := gpio.Pin 13
-  reset := gpio.Pin 12
-  dio1 := gpio.Pin 14
-  radio := sx1262.Sx1262 device busy
-      --reset=reset
-      --dio1=dio1
+  radio := sx1262.Sx1262 device 13
+      --reset=12
+      --dio1=14
       --tcxo-voltage=1_800
       --dio2-rf-switch
-  radio.configure (lora.Configuration --frequency=868_100_000)
+  configuration := lora.Configuration
+  radio.configure configuration
   radio.transmit "hello".to-byte-array
 ```
 
