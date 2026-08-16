@@ -16,8 +16,8 @@ import lora.lorawan.region
 /**
 Joins The Things Stack over OTAA and sends one LoRaWAN uplink.
 
-The `board` Jaguar define selects either a LILYGO T3 LoRa32 V1.6 or a Heltec
-  WiFi LoRa 32 V3. The remaining defines provide OTAA credentials and the
+The `board` Jaguar define selects a LILYGO T3 LoRa32 V1.6, Heltec WiFi LoRa 32
+  V3, or MoleNet v7.1. The remaining defines provide OTAA credentials and the
   optional EU868 data rate.
 */
 main:
@@ -68,22 +68,16 @@ run-heltec_ configuration/Map -> none:
 run-molenet_ configuration/Map -> none:
   bus := spi.Bus --clock=14 --mosi=47 --miso=21
   device := bus.device --cs=48 --frequency=4_000_000
-  busy := gpio.Pin 39
-  reset := gpio.Pin 15
-  dio1 := gpio.Pin 46
   try:
-    radio := sx1262.Sx1262 device busy
-        --reset=reset
-        --dio1=dio1
+    radio := sx1262.Sx1262 device 39
+        --reset=15
+        --dio1=46
         --dio2-rf-switch
     try:
       join-and-send_ radio configuration
     finally:
       radio.close
   finally:
-    dio1.close
-    reset.close
-    busy.close
     device.close
     bus.close
 
