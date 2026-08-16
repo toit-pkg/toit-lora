@@ -4,6 +4,12 @@
 
 import lorawan.end-device
 
+/**
+Joins and sends one uplink through an installed LoRaWAN end-device service.
+
+The service provider owns the regional, credential, radio, and board-specific
+  configuration. This client can therefore run independently of the hardware.
+*/
 main:
   device := end-device.v1
   try:
