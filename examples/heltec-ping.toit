@@ -26,7 +26,7 @@ main:
     configuration := lora.Configuration
     radio.configure configuration
     print "HELTEC_TX"
-    radio.transmit "ping-from-heltec".to-byte-array
+    radio.transmit "ping-from-heltec"
     packet := radio.receive --timeout-ms=5_000
     if packet:
       print "HELTEC_RX $(packet.payload.to-string) RSSI=$(packet.rssi) SNR=$(packet.snr)"

@@ -28,7 +28,7 @@ main:
       --dio2-rf-switch
   configuration := lora.Configuration
   radio.configure configuration
-  radio.transmit "hello".to-byte-array
+  radio.transmit "hello"
 ```
 
 See `examples/heltec-ping.toit` for complete resource cleanup and a
