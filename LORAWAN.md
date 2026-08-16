@@ -39,13 +39,17 @@ main:
 The service API's `v1` is independent of the implemented LoRaWAN protocol
 revision, which is currently 1.0.x.
 
-In this combined driver repository, `service/lorawan.toit` is the concrete
-provider container for the tested Heltec and LilyGO boards. For example:
+In this combined driver repository, `service/lorawan.toit` is a concrete,
+board-independent provider container. Supply the radio family and wiring; for
+example, for a Heltec WiFi LoRa 32 V3:
 
 ```sh
 jag container install lorawan service/lorawan.toit \
     --device DEVICE \
-    -D board=heltec \
+    -D radio=sx1262 \
+    -D spi-clock=9 -D spi-mosi=10 -D spi-miso=11 -D spi-cs=8 \
+    -D reset=12 -D busy=13 -D dio1=14 \
+    -D dio2-rf-switch=true -D tcxo-voltage=1800 \
     -D region=eu868 \
     -D app-key=APP_KEY \
     -D join-eui=JOIN_EUI \

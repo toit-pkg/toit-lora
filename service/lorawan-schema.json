@@ -2,13 +2,27 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "LoRaWAN end-device service configuration",
   "type": "object",
-  "required": ["board", "region", "app-key", "join-eui", "device-eui"],
+  "required": [
+    "radio", "spi-clock", "spi-mosi", "spi-miso", "spi-cs",
+    "region", "app-key", "join-eui", "device-eui"
+  ],
   "additionalProperties": false,
   "properties": {
-    "board": {
+    "radio": {
       "type": "string",
-      "enum": ["heltec", "lilygo"]
+      "enum": ["sx1262", "sx127x"]
     },
+    "spi-clock": {"type": "integer", "minimum": 0},
+    "spi-mosi": {"type": "integer", "minimum": 0},
+    "spi-miso": {"type": "integer", "minimum": 0},
+    "spi-cs": {"type": "integer", "minimum": 0},
+    "spi-frequency": {"type": "integer", "minimum": 1, "default": 4000000},
+    "reset": {"type": "integer", "minimum": 0},
+    "busy": {"type": "integer", "minimum": 0},
+    "dio0": {"type": "integer", "minimum": 0},
+    "dio1": {"type": "integer", "minimum": 0},
+    "dio2-rf-switch": {"type": "boolean", "default": false},
+    "tcxo-voltage": {"type": "integer", "minimum": 1600, "maximum": 3300},
     "region": {
       "type": "string",
       "enum": ["eu868", "us915"]
@@ -52,5 +66,15 @@
       "type": "string",
       "description": "Flash bucket path for DevNonce, session keys, and frame counters."
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"radio": {"const": "sx1262"}}},
+      "then": {"required": ["busy", "dio1"]}
+    },
+    {
+      "if": {"properties": {"radio": {"const": "sx127x"}}},
+      "then": {"required": ["dio0"]}
+    }
+  ]
 }

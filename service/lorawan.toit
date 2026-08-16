@@ -14,10 +14,8 @@ import .hardware as hardware
 import .lorawan-radio-adapter as adapter
 
 main args/List:
-  config := args.is-empty
-      ? configuration.load
-      : configuration-from-args_ args
-  board := configuration.required-string config "board"
+  if not args.is-empty: throw "Configure LoRaWAN using container assets"
+  config := configuration.load
   application-key := hex.decode
       configuration.required-string config "app-key"
   join-eui := hex.decode
@@ -41,7 +39,7 @@ main args/List:
       "storage-path"
       "toit.io/lorawan/$device-eui-text"
 
-  opened := hardware.open board
+  opened := hardware.open config
   state := flash-state.FlashStateStore storage-path
       --initial-device-nonce=initial-device-nonce
   class-a := device.ClassA
@@ -58,19 +56,6 @@ main args/List:
     installed.uninstall
     state.close
     opened.close
-
-configuration-from-args_ args/List -> Map:
-  if args.size != 5 and args.size != 6:
-    throw "Usage: lorawan <board> <region> <app-key> <join-eui> <device-eui> [device-nonce]"
-  result := {
-    "board": args[0],
-    "region": args[1],
-    "app-key": args[2],
-    "join-eui": args[3],
-    "device-eui": args[4],
-  }
-  if args.size == 6: result["initial-device-nonce"] = int.parse args[5]
-  return result
 
 region-from-string_ name/string -> region.Region:
   if name == "eu868": return region.Eu868
