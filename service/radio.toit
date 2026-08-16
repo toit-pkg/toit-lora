@@ -2,16 +2,17 @@
 // Use of this source code is governed by a BSD0-style license that can be
 // found in the LICENSE file.
 
+import lora
 import lora.providers.radio-service as provider
 
 import .configuration as configuration
 import .hardware as hardware
 
 main args/List:
-  config := args.is-empty
-      ? configuration.load
-      : configuration-from-args_ args
-  opened := hardware.open (configuration.required-string config "board")
+  if not args.is-empty: throw "Configure the radio using container assets"
+  config := configuration.load
+  opened := hardware.open config
+  opened.radio.configure (radio-configuration_ config)
   installed := provider.install opened.radio
   try:
     while true: sleep --ms=60_000
@@ -19,6 +20,14 @@ main args/List:
     installed.uninstall
     opened.close
 
-configuration-from-args_ args/List -> Map:
-  if args.size != 1: throw "Usage: radio <heltec|lilygo>"
-  return {"board": args[0]}
+radio-configuration_ config/Map -> lora.Configuration:
+  return lora.Configuration
+      --frequency=(configuration.optional-int config "frequency" 868_100_000)
+      --bandwidth=(configuration.optional-int config "bandwidth" 125_000)
+      --spreading-factor=(configuration.optional-int config "spreading-factor" 7)
+      --coding-rate=(configuration.optional-int config "coding-rate" 5)
+      --preamble-length=(configuration.optional-int config "preamble-length" 8)
+      --crc=(configuration.optional-bool config "crc" true)
+      --invert-iq=(configuration.optional-bool config "invert-iq" false)
+      --sync-word=(configuration.optional-int config "sync-word" lora.PRIVATE-SYNC-WORD)
+      --tx-power=(configuration.optional-int config "tx-power" 14)

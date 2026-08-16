@@ -8,7 +8,9 @@ import lora
 import lora.sx1262
 import lora.sx127x
 
-/** Owns a board's radio and all transport resources used by it. */
+import .configuration as configuration
+
+/** Owns a radio and all transport resources used by it. */
 class OpenedRadio:
   radio/lora.Radio
   bus_/spi.Bus
@@ -25,24 +27,33 @@ class OpenedRadio:
     device_.close
     bus_.close
 
-/** Opens the radio on the named supported $board. */
-open board/string -> OpenedRadio:
-  if board == "heltec": return open-heltec_
-  if board == "lilygo": return open-lilygo_
-  throw "LORA_UNKNOWN_BOARD"
+/** Opens the radio described by $config. */
+open config/Map -> OpenedRadio:
+  family := configuration.required-string config "radio"
+  if family == "sx1262": return open-sx1262_ config
+  if family == "sx127x": return open-sx127x_ config
+  throw "LORA_UNKNOWN_RADIO"
 
-open-heltec_ -> OpenedRadio:
-  bus := spi.Bus --clock=9 --mosi=10 --miso=11
+open-sx1262_ config/Map -> OpenedRadio:
+  bus := open-bus_ config
   device/spi.Device? := null
   radio/lora.Radio? := null
   succeeded := false
   try:
-    device = bus.device --cs=8 --frequency=4_000_000
-    radio = sx1262.Sx1262 device 13
-        --reset=12
-        --dio1=14
-        --tcxo-voltage=1_800
-        --dio2-rf-switch
+    device = open-device_ bus config
+    busy := configuration.required-int config "busy"
+    reset := configuration.optional-nullable-int config "reset"
+    dio1 := configuration.required-int config "dio1"
+    tcxo-voltage := configuration.optional-int config "tcxo-voltage" 0
+    dio2-rf-switch := configuration.optional-bool
+        config
+        "dio2-rf-switch"
+        false
+    radio = sx1262.Sx1262 device busy
+        --reset=reset
+        --dio1=dio1
+        --tcxo-voltage=tcxo-voltage
+        --dio2-rf-switch=dio2-rf-switch
     result := OpenedRadio radio bus device
     succeeded = true
     return result
@@ -52,14 +63,16 @@ open-heltec_ -> OpenedRadio:
       if device: device.close
       bus.close
 
-open-lilygo_ -> OpenedRadio:
-  bus := spi.Bus --clock=5 --mosi=27 --miso=19
+open-sx127x_ config/Map -> OpenedRadio:
+  bus := open-bus_ config
   device/spi.Device? := null
   radio/lora.Radio? := null
   succeeded := false
   try:
-    device = bus.device --cs=18 --frequency=4_000_000
-    radio = sx127x.Sx127x device --reset=23 --dio0=26
+    device = open-device_ bus config
+    reset := configuration.optional-nullable-int config "reset"
+    dio0 := configuration.required-int config "dio0"
+    radio = sx127x.Sx127x device --reset=reset --dio0=dio0
     result := OpenedRadio radio bus device
     succeeded = true
     return result
@@ -68,3 +81,14 @@ open-lilygo_ -> OpenedRadio:
       if radio: catch --trace: radio.close
       if device: device.close
       bus.close
+
+open-bus_ config/Map -> spi.Bus:
+  return spi.Bus
+      --clock=(configuration.required-int config "spi-clock")
+      --mosi=(configuration.required-int config "spi-mosi")
+      --miso=(configuration.required-int config "spi-miso")
+
+open-device_ bus/spi.Bus config/Map -> spi.Device:
+  return bus.device
+      --cs=(configuration.required-int config "spi-cs")
+      --frequency=(configuration.optional-int config "spi-frequency" 4_000_000)

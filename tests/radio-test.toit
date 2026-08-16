@@ -3,6 +3,7 @@
 // found in the tests/LICENSE file.
 
 import expect show *
+import io
 import lora
 import lora.providers.radio-service as provider
 import lora.radio-service as service
@@ -45,21 +46,17 @@ service-test:
   first := service.v1
   second := service.v1
   try:
-    configuration := lora.Configuration --frequency=868_300_000
-    first.configure configuration
-    first.transmit #[1, 2, 3]
+    first.transmit "first"
+    second.transmit #[1, 2, 3]
     packet := first.receive --timeout-ms=17
     expect-equals #[4, 5, 6] packet.payload
     expect-equals -91.0 packet.rssi
     expect-equals 7.5 packet.snr
-    expect-equals 868_300_000 radio.configuration.frequency
-    expect-equals #[1, 2, 3] radio.transmitted
+    expect-equals ["first".to-byte-array, #[1, 2, 3]] radio.transmitted
     expect-equals 17 radio.timeout-ms
-    expect-throw "LORA_RADIO_BUSY":
-      second.standby
     first.close
     second.standby
-    expect-equals 2 radio.standby-count
+    expect-equals 1 radio.standby-count
   finally:
     first.close
     second.close
@@ -67,15 +64,17 @@ service-test:
 
 class FakeRadio implements lora.Radio:
   configuration/lora.Configuration? := null
-  transmitted/ByteArray? := null
+  transmitted/List := []
   timeout-ms/int? := null
   standby-count/int := 0
 
   configure configuration/lora.Configuration -> none:
     this.configuration = configuration
 
-  transmit payload/ByteArray -> none:
-    transmitted = payload
+  transmit payload/io.Data -> none:
+    bytes := ByteArray payload.byte-size
+    payload.write-to-byte-array bytes --at=0 0 payload.byte-size
+    transmitted.add bytes
 
   receive --timeout-ms/int?=null -> lora.Packet?:
     this.timeout-ms = timeout-ms

@@ -22,6 +22,13 @@ required-string configuration/Map key/string -> string:
   if value is not string: throw "LORA_MISSING_CONFIGURATION_$key"
   return value
 
+/** Returns the required integer stored under $key. */
+required-int configuration/Map key/string -> int:
+  value := configuration.get key
+  if value is int: return value
+  if value is string: return int.parse value
+  throw "LORA_MISSING_CONFIGURATION_$key"
+
 /** Returns the integer under $key, or $fallback when it is absent. */
 optional-int configuration/Map key/string fallback/int -> int:
   value := configuration.get key
@@ -36,3 +43,20 @@ optional-string configuration/Map key/string fallback/string -> string:
   if not value: return fallback
   if value is not string: throw "LORA_INVALID_CONFIGURATION_$key"
   return value
+
+/** Returns the optional integer under $key, or null when it is absent. */
+optional-nullable-int configuration/Map key/string -> int?:
+  value := configuration.get key
+  if not value: return null
+  if value is int: return value
+  if value is string: return int.parse value
+  throw "LORA_INVALID_CONFIGURATION_$key"
+
+/** Returns the boolean under $key, or $fallback when it is absent. */
+optional-bool configuration/Map key/string fallback/bool -> bool:
+  value := configuration.get key
+  if value == null: return fallback
+  if value is bool: return value
+  if value == "true": return true
+  if value == "false": return false
+  throw "LORA_INVALID_CONFIGURATION_$key"

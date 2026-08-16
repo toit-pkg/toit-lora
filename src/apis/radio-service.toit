@@ -11,8 +11,7 @@ SELECTOR-v1 ::= services.ServiceSelector
     --major=1
     --minor=0
 
-CONFIGURE-INDEX-v1   ::= 0
-TRANSMIT-INDEX-v1    ::= 1
-RECEIVE-INDEX-v1     ::= 2
-STANDBY-INDEX-v1     ::= 3
-SLEEP-INDEX-v1         ::= 4
+TRANSMIT-INDEX-v1 ::= 0
+RECEIVE-INDEX-v1  ::= 1
+STANDBY-INDEX-v1  ::= 2
+SLEEP-INDEX-v1    ::= 3
