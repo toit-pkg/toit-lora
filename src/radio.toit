@@ -2,6 +2,8 @@
 // Use of this source code is governed by an MIT-style license that can be
 // found in the LICENSE file.
 
+import io
+
 /** The private-network LoRa sync word. */
 PRIVATE-SYNC-WORD ::= 0x12
 
@@ -92,14 +94,15 @@ interface Radio:
   configure configuration/Configuration -> none
 
   /** Transmits one LoRa $payload. */
-  transmit payload/ByteArray -> none
+  transmit payload/io.Data -> none
 
   /**
   Receives one packet, or returns null when no valid header is detected before
     $timeout-ms expires.
 
   Once a header is detected, the call may continue past $timeout-ms while the
-    remainder of the packet is received. A null timeout waits indefinitely.
+    remainder of the packet is received. Waits indefinitely if no timeout is
+    given.
   */
   receive --timeout-ms/int?=null -> Packet?
 

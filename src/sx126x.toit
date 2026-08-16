@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 import gpio
+import io
 import monitor
 import spi
 
@@ -15,6 +16,10 @@ The caller owns the SPI device. The driver owns its GPIO pins and releases them
   when closed.
 */
 class Sx1262 implements radio.Radio:
+  static TX-TIMEOUT-MS_ ::= 15_000
+  static TX-IRQ-GUARD-MS_ ::= 100
+  static BUSY-TIMEOUT-MS_ ::= 1_000
+
   static SET-SLEEP_ ::= 0x84
   static SET-STANDBY_ ::= 0x80
   static SET-TX_ ::= 0x83
@@ -87,8 +92,8 @@ class Sx1262 implements radio.Radio:
     busy_ = gpio.Pin busy
     succeeded := false
     try:
-      if reset != null: reset_ = gpio.Pin reset
-      if dio1 != null: dio1_ = gpio.Pin dio1
+      if reset: reset_ = gpio.Pin reset
+      if dio1: dio1_ = gpio.Pin dio1
       busy_.configure --input
       if dio1_: dio1_.configure --input
       if reset_:
@@ -134,20 +139,23 @@ class Sx1262 implements radio.Radio:
       configuration_ = configuration
 
   /** See $radio.Radio.transmit. */
-  transmit payload/ByteArray -> none:
-    if payload.size > radio.MAX-PAYLOAD-SIZE: throw "LORA_PAYLOAD_TOO_LARGE"
+  transmit payload/io.Data -> none:
+    if payload.byte-size > radio.MAX-PAYLOAD-SIZE:
+      throw "LORA_PAYLOAD_TOO_LARGE"
     mutex_.do:
       ensure-open_
       write-command_ SET-STANDBY_ #[STANDBY-RC_]
-      set-packet-parameters_ configuration_ payload.size
+      set-packet-parameters_ configuration_ payload.byte-size
       write-buffer_ 0 payload
       irq-mask := IRQ-TX-DONE_ | IRQ-TIMEOUT_
       set-irq-mapping_ irq-mask irq-mask
       clear-irq_ IRQ-ALL_
-      timeout := timeout-units_ 15_000
+      timeout := timeout-units_ TX-TIMEOUT-MS_
       write-command_ SET-TX_ (uint24_ timeout)
       try:
-        irq := wait-for-irq_ irq-mask --timeout-ms=15_100
+        deadline-us := Time.monotonic-us
+            + (TX-TIMEOUT-MS_ + TX-IRQ-GUARD-MS_) * 1_000
+        irq := wait-for-irq_ irq-mask --deadline-us=deadline-us
         if (irq & IRQ-TX-DONE_) == 0: throw "LORA_TX_TIMEOUT"
       finally:
         clear-irq_ IRQ-ALL_
@@ -167,17 +175,10 @@ class Sx1262 implements radio.Radio:
       set-irq-mapping_ irq-mask irq-mask
       clear-irq_ IRQ-ALL_
       write-command_ SET-RX_ (uint24_ 0xffffff)
-      deadline := timeout-ms == null
-          ? null
-          : Time.monotonic-us + timeout-ms * 1_000
+      deadline := timeout-ms and (Time.monotonic-us + timeout-ms * 1_000)
       try:
         while true:
-          remaining-ms/int? := null
-          if deadline:
-            remaining-us := deadline - Time.monotonic-us
-            if remaining-us <= 0: return null
-            remaining-ms = (remaining-us + 999) / 1_000
-          irq := wait-for-irq_ irq-mask --timeout-ms=remaining-ms
+          irq := wait-for-irq_ irq-mask --deadline-us=deadline
           if (irq & (IRQ-TIMEOUT_ | IRQ-HEADER-ERROR_ | IRQ-CRC-ERROR_)) != 0:
             return null
           if (irq & IRQ-HEADER-VALID_) != 0:
@@ -312,17 +313,15 @@ class Sx1262 implements radio.Radio:
   clear-irq_ mask/int -> none:
     write-command_ CLEAR-IRQ-STATUS_ #[(mask >> 8) & 0xff, mask & 0xff]
 
-  wait-for-irq_ mask/int --timeout-ms/int?=null -> int:
-    deadline := timeout-ms == null
-        ? null
-        : Time.monotonic-us + timeout-ms * 1_000
+  wait-for-irq_ mask/int --deadline-us/int?=null -> int:
     while true:
       irq := get-irq_
       if (irq & mask) != 0: return irq
-      if deadline and Time.monotonic-us >= deadline: return IRQ-TIMEOUT_
+      if deadline-us and Time.monotonic-us >= deadline-us:
+        return IRQ-TIMEOUT_
       if dio1_:
-        if deadline:
-          remaining := deadline - Time.monotonic-us
+        if deadline-us:
+          remaining := deadline-us - Time.monotonic-us
           if remaining <= 0: return IRQ-TIMEOUT_
           exception := catch --unwind=(: it != DEADLINE-EXCEEDED-ERROR):
             with-timeout --us=remaining: dio1_.wait-for 1
@@ -333,10 +332,10 @@ class Sx1262 implements radio.Radio:
         sleep-ms_ 1
     unreachable
 
-  wait-while-busy_ --timeout-ms/int=1_000 -> none:
+  wait-while-busy_ -> none:
     if busy_.get == 0: return
     exception := catch --unwind=(: it != DEADLINE-EXCEEDED-ERROR):
-      with-timeout --ms=timeout-ms: busy_.wait-for 0
+      with-timeout --ms=BUSY-TIMEOUT-MS_: busy_.wait-for 0
     if exception: throw "SX126X_BUSY_TIMEOUT"
 
   write-command_ -> none
@@ -378,10 +377,10 @@ class Sx1262 implements radio.Radio:
   read-register-byte_ address/int -> int:
     return (read-register_ address 1)[0]
 
-  write-buffer_ offset/int data/ByteArray -> none:
-    command := ByteArray (data.size + 1)
+  write-buffer_ offset/int data/io.Data -> none:
+    command := ByteArray (data.byte-size + 1)
     command[0] = offset
-    command.replace 1 data
+    data.write-to-byte-array command --at=1 0 data.byte-size
     write-command_ WRITE-BUFFER_ command
 
   read-buffer_ offset/int size/int -> ByteArray:
