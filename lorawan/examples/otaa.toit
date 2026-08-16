@@ -80,7 +80,6 @@ join-and-send_ radio/lora.Radio configuration/Map -> none:
       (adapter.RadioAdapter radio)
       region.Eu868
       --data-rate=data-rate
-      --receive-window-ms=1_500
   print "OTAA_JOIN_REQUEST nonce=$device-nonce"
   session := end-device.join
       application-key

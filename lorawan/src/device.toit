@@ -24,7 +24,13 @@ interface Radio:
   /** Transmits one complete LoRaWAN PHYPayload. */
   transmit payload/ByteArray -> none
 
-  /** Receives a PHYPayload or returns null when $timeout-ms expires. */
+  /**
+  Receives a PHYPayload or returns null when no valid header is detected before
+    $timeout-ms expires.
+
+  Once a header is detected, the call may continue past $timeout-ms while the
+    remainder of the packet is received.
+  */
   receive --timeout-ms/int -> ByteArray?
 
 /** Mutable LoRaWAN 1.0.x activation and frame-counter state. */

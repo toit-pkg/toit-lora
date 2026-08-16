@@ -16,6 +16,7 @@ main:
   join-request-test
   invalid-device-nonce-test
   join-accept-test
+  join-accept-with-channel-list-test
   downlink-round-trip-test
   region-test
 
@@ -80,6 +81,29 @@ join-accept-test:
   expect-equals 1 accepted.receive-delay-seconds
   expect-equals 16 accepted.network-session-key.size
   expect-equals 16 accepted.application-session-key.size
+
+join-accept-with-channel-list-test:
+  key := hex.decode "00112233445566778899aabbccddeeff"
+  plaintext := hex.decode
+      "010203040506da1b01260001184f84e85684b85e84886684586e840000000000"
+  authenticated := ByteArray 29
+  authenticated[0] = 0x20
+  authenticated.replace 1 plaintext 0 28
+  plaintext.replace 28 (crypto.join-mic key authenticated)
+  encrypted := ByteArray 32
+  cipher := aes.AesEcb.decryptor key
+  try:
+    2.repeat: |index|
+      offset := index * 16
+      encrypted.replace offset (cipher.decrypt plaintext[offset..offset + 16])
+  finally:
+    cipher.close
+  frame := ByteArray 33
+  frame[0] = 0x20
+  frame.replace 1 encrypted
+  accepted := frames.parse-join-accept key frame 0x1234
+  expect-equals 0x2601_1bda accepted.device-address
+  expect-equals plaintext[12..28] accepted.channel-frequency-list
 
 downlink-round-trip-test:
   network-key := hex.decode "00112233445566778899aabbccddeeff"

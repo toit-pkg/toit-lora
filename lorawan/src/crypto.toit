@@ -161,7 +161,13 @@ aes-crypt-blocks_ key/ByteArray input/ByteArray --encrypt/bool -> ByteArray:
       ? aes.AesEcb.encryptor key
       : aes.AesEcb.decryptor key
   try:
-    return encrypt ? cipher.encrypt input : cipher.decrypt input
+    result := ByteArray input.size
+    (input.size / 16).repeat: |index|
+      offset := index * 16
+      block := input[offset..offset + 16]
+      transformed := encrypt ? cipher.encrypt block : cipher.decrypt block
+      result.replace offset transformed
+    return result
   finally:
     cipher.close
 
