@@ -22,7 +22,7 @@ main:
     radio.configure configuration
     sleep --ms=2_000
     print "LILYGO_TX"
-    radio.transmit "hello-from-lilygo".to-byte-array
+    radio.transmit "hello-from-lilygo"
   finally:
     radio.close
     device.close

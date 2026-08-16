@@ -25,7 +25,7 @@ main:
     if packet:
       print "LILYGO_RX $(packet.payload.to-string) RSSI=$(packet.rssi) SNR=$(packet.snr)"
       sleep --ms=250
-      radio.transmit "pong-from-lilygo".to-byte-array
+      radio.transmit "pong-from-lilygo"
       print "LILYGO_TX"
     else:
       print "LILYGO_RX_TIMEOUT"
