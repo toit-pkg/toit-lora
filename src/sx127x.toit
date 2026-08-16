@@ -11,8 +11,8 @@ import .radio as radio
 /**
 Driver for Semtech SX1276, SX1277, SX1278, and SX1279 LoRa radios.
 
-The caller owns the SPI device and GPIO pins and must close them after closing
-  the driver.
+The caller owns the SPI device. The driver owns its GPIO pins and releases them
+  when closed.
 */
 class Sx127x implements radio.Radio:
   static REG-FIFO_ ::= 0x00
@@ -55,8 +55,8 @@ class Sx127x implements radio.Radio:
   static IRQ-TX-DONE_ ::= 1 << 3
 
   device_/spi.Device
-  reset_/gpio.Pin?
-  dio0_/gpio.Pin?
+  reset_/gpio.Pin? := null
+  dio0_/gpio.Pin? := null
   mutex_/monitor.Mutex ::= monitor.Mutex
   configuration_/radio.Configuration := radio.Configuration
   closed_/bool := false
@@ -64,25 +64,30 @@ class Sx127x implements radio.Radio:
   /**
   Constructs and probes an SX127x attached to $device.
 
-  The optional $reset and $dio0 pins are configured by the driver but remain
-    owned by the caller. Polling is used when $dio0 is absent.
+  The optional $reset and $dio0 pin numbers are opened and owned by the driver.
+    Polling is used when $dio0 is absent.
   */
-  constructor device/spi.Device --reset/gpio.Pin?=null --dio0/gpio.Pin?=null:
+  constructor device/spi.Device --reset/int?=null --dio0/int?=null:
     device_ = device
-    reset_ = reset
-    dio0_ = dio0
-    if reset_:
-      reset_.configure --output --value=1
-      reset-radio_
-    if dio0_: dio0_.configure --input
-    version := read-register_ REG-VERSION_
-    if version != 0x12: throw "SX127X_BAD_VERSION"
-    set-mode_ MODE-SLEEP_
-    sleep --ms=1
-    write-register_ REG-FIFO-TX-BASE-ADDR_ 0
-    write-register_ REG-FIFO-RX-BASE-ADDR_ 0
-    write-register_ REG-LNA_ ((read-register_ REG-LNA_) | 0x03)
-    configure configuration_
+    succeeded := false
+    try:
+      if reset != null: reset_ = gpio.Pin reset
+      if dio0 != null: dio0_ = gpio.Pin dio0
+      if reset_:
+        reset_.configure --output --value=1
+        reset-radio_
+      if dio0_: dio0_.configure --input
+      version := read-register_ REG-VERSION_
+      if version != 0x12: throw "SX127X_BAD_VERSION"
+      set-mode_ MODE-SLEEP_
+      sleep-ms_ 1
+      write-register_ REG-FIFO-TX-BASE-ADDR_ 0
+      write-register_ REG-FIFO-RX-BASE-ADDR_ 0
+      write-register_ REG-LNA_ ((read-register_ REG-LNA_) | 0x03)
+      configure configuration_
+      succeeded = true
+    finally:
+      if not succeeded: close-pins_
 
   /** See $radio.Radio.configure. */
   configure configuration/radio.Configuration -> none:
@@ -131,13 +136,13 @@ class Sx127x implements radio.Radio:
         set-mode_ MODE-STANDBY_
 
   /** See $radio.Radio.receive. */
-  receive --timeout-ms/int=-1 -> radio.Packet?:
+  receive --timeout-ms/int?=null -> radio.Packet?:
     return mutex_.do:
       ensure-open_
       write-register_ REG-DIO-MAPPING-1_ 0x00
       write-register_ REG-IRQ-FLAGS_ 0xff
       set-mode_ MODE-RX-CONTINUOUS_
-      deadline := timeout-ms < 0
+      deadline := timeout-ms == null
           ? null
           : Time.monotonic-us + timeout-ms * 1_000
       try:
@@ -164,7 +169,7 @@ class Sx127x implements radio.Radio:
             if snr < 0: rssi += snr
             return radio.Packet payload rssi snr
           if deadline and Time.monotonic-us >= deadline: return null
-          sleep --ms=1
+          sleep-ms_ 1
       finally:
         set-mode_ MODE-STANDBY_
 
@@ -174,8 +179,8 @@ class Sx127x implements radio.Radio:
       ensure-open_
       set-mode_ MODE-STANDBY_
 
-  /** See $radio.Radio.sleep-radio. */
-  sleep-radio -> none:
+  /** See $radio.Radio.sleep. */
+  sleep -> none:
     mutex_.do:
       ensure-open_
       set-mode_ MODE-SLEEP_
@@ -185,14 +190,21 @@ class Sx127x implements radio.Radio:
     if closed_: return
     mutex_.do:
       if closed_: return
-      set-mode_ MODE-SLEEP_
-      closed_ = true
+      try:
+        set-mode_ MODE-SLEEP_
+      finally:
+        closed_ = true
+        close-pins_
+
+  close-pins_ -> none:
+    if dio0_: dio0_.close
+    if reset_: reset_.close
 
   reset-radio_ -> none:
     reset_.set 0
-    sleep --ms=2
+    sleep-ms_ 2
     reset_.set 1
-    sleep --ms=10
+    sleep-ms_ 10
 
   ensure-open_ -> none:
     if closed_: throw "LORA_CLOSED"
@@ -245,8 +257,14 @@ class Sx127x implements radio.Radio:
   wait-for-irq_ mask/int --timeout-ms/int -> none:
     deadline := Time.monotonic-us + timeout-ms * 1_000
     while ((read-register_ REG-IRQ-FLAGS_) & mask) == 0:
-      if Time.monotonic-us >= deadline: throw "LORA_TX_TIMEOUT"
-      sleep --ms=1
+      remaining := deadline - Time.monotonic-us
+      if remaining <= 0: throw "LORA_TX_TIMEOUT"
+      if dio0_:
+        exception := catch --unwind=(: it != DEADLINE-EXCEEDED-ERROR):
+          with-timeout --us=remaining: dio0_.wait-for 1
+        if exception: throw "LORA_TX_TIMEOUT"
+      else:
+        sleep-ms_ 1
 
   read-register_ address/int -> int:
     data := #[address & 0x7f, 0]
@@ -286,3 +304,6 @@ class Sx127x implements radio.Radio:
 
   static signed-byte_ value/int -> int:
     return value >= 0x80 ? value - 0x100 : value
+
+sleep-ms_ milliseconds/int -> none:
+  sleep --ms=milliseconds
