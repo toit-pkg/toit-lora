@@ -39,17 +39,16 @@ main:
 The service API's `v1` is independent of the implemented LoRaWAN protocol
 revision, which is currently 1.0.x.
 
-In this combined driver repository, `service/lorawan.toit` is a concrete,
-board-independent provider container. Supply the radio family and wiring; for
-example, for a Heltec WiFi LoRa 32 V3:
+In this combined driver repository, `service/lorawan.toit` is the concrete,
+board-independent provider container. Supply the radio family and pins as
+configuration. For example, the MoleNet v7.1 wiring is:
 
 ```sh
 jag container install lorawan service/lorawan.toit \
     --device DEVICE \
     -D radio=sx1262 \
-    -D spi-clock=9 -D spi-mosi=10 -D spi-miso=11 -D spi-cs=8 \
-    -D reset=12 -D busy=13 -D dio1=14 \
-    -D dio2-rf-switch=true -D tcxo-voltage=1800 \
+    -D spi-clock=14 -D spi-mosi=47 -D spi-miso=21 -D spi-cs=48 \
+    -D reset=15 -D busy=39 -D dio1=46 -D dio2-rf-switch=true \
     -D region=eu868 \
     -D app-key=APP_KEY \
     -D join-eui=JOIN_EUI \
@@ -87,6 +86,14 @@ MAC commands, multicast, Class B/C, LoRaWAN 1.1, and certification are not yet
 implemented. The EU868/US915 defaults are suitable for initial interoperability
 work, not a substitute for regional compliance and LoRa Alliance certification
 testing.
+
+## MoleNet sensor example
+
+`examples/molenet-bme280.toit` reads the MoleNet v7.1 onboard BME280 over I2C
+and sends temperature on application port 1 through the LoRaWAN service. Its
+two-byte payload is a signed, big-endian count of hundredths of a degree
+Celsius. Paste `examples/molenet-bme280-decoder.js` into The Things Stack's
+uplink payload formatter to expose the value as `temperature_c`.
 
 Run the host-side protocol and receive-window tests with:
 

@@ -10,9 +10,11 @@ their different command/register transports internally.
 | --- | --- | --- | --- | --- |
 | Heltec WiFi LoRa 32 V3 | ESP32-S3 | SX1262 | SCK 9, MOSI 10, MISO 11, CS 8 | RESET 12, BUSY 13, DIO1 14, DIO2 RF switch, 1.8 V DIO3 TCXO |
 | LILYGO T3 LoRa32 V1.6 | ESP32 | SX1276 | SCK 5, MOSI 27, MISO 19, CS 18 | RESET 23, DIO0 26 |
+| MoleNet v7.1 | ESP32-S3 | RA-01SH (SX1262) | SCK 14, MOSI 47, MISO 21, CS 48 | RESET 15, BUSY 39, DIO1 46, DIO2 RF switch, crystal oscillator |
 
-Both boards were probed from Toit and exchanged packets in both directions at
-868.1 MHz. The examples retain these exact tested pin maps.
+The boards were probed from Toit and exchanged packets at 868.1 MHz. In
+particular, the MoleNet SX1262 and LILYGO SX1276 completed a bidirectional
+ping/pong, covering both driver families with different radios.
 
 ## Direct use
 
@@ -71,11 +73,12 @@ Direct use remains available and does not import `system.services`.
 - The package contains the plain LoRa drivers, raw service API, and LoRaWAN
   support under `lora.lorawan`.
 - `service/` contains board-independent raw LoRa and LoRaWAN provider
-  containers configured with a radio family and pins. The timing-sensitive
-  LoRaWAN provider owns the plain radio directly rather than calling the
-  raw-radio service. Both providers remain installed while opening radio
-  hardware only for active clients. The LoRaWAN service stores state in the
-  qualified flash bucket path `toit.io/lorawan/<device-eui>` by default.
+  containers. Radio family, SPI wiring, control pins, RF-switch control, and
+  TCXO voltage are supplied as configuration. The timing-sensitive LoRaWAN
+  provider owns the plain radio directly rather than calling the raw-radio
+  service. Both providers remain installed while opening radio hardware only
+  for active clients. The LoRaWAN service stores state in the qualified flash
+  bucket path `toit.io/lorawan/<device-eui>` by default.
 
 ## Verification
 

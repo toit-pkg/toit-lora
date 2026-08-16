@@ -30,6 +30,8 @@ main:
     run-lilygo_ configuration
   else if board == "heltec":
     run-heltec_ configuration
+  else if board == "molenet":
+    run-molenet_ configuration
   else:
     throw "LORAWAN_UNKNOWN_BOARD"
 
@@ -60,6 +62,28 @@ run-heltec_ configuration/Map -> none:
     finally:
       radio.close
   finally:
+    device.close
+    bus.close
+
+run-molenet_ configuration/Map -> none:
+  bus := spi.Bus --clock=14 --mosi=47 --miso=21
+  device := bus.device --cs=48 --frequency=4_000_000
+  busy := gpio.Pin 39
+  reset := gpio.Pin 15
+  dio1 := gpio.Pin 46
+  try:
+    radio := sx1262.Sx1262 device busy
+        --reset=reset
+        --dio1=dio1
+        --dio2-rf-switch
+    try:
+      join-and-send_ radio configuration
+    finally:
+      radio.close
+  finally:
+    dio1.close
+    reset.close
+    busy.close
     device.close
     bus.close
 
