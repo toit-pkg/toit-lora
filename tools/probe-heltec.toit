@@ -5,4 +5,4 @@
 import .probe
 
 main:
-  probe-sx126x 12
+  probe-sx126x 12 13 9 10 11 8

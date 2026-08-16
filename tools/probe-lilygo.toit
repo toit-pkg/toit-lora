@@ -5,4 +5,4 @@
 import .probe
 
 main:
-  probe-sx127x 23
+  probe-sx127x 23 5 27 19 18

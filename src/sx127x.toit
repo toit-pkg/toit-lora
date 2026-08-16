@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 import gpio
+import io
 import monitor
 import spi
 
@@ -71,8 +72,8 @@ class Sx127x implements radio.Radio:
     device_ = device
     succeeded := false
     try:
-      if reset != null: reset_ = gpio.Pin reset
-      if dio0 != null: dio0_ = gpio.Pin dio0
+      if reset: reset_ = gpio.Pin reset
+      if dio0: dio0_ = gpio.Pin dio0
       if reset_:
         reset_.configure --output --value=1
         reset-radio_
@@ -118,8 +119,9 @@ class Sx127x implements radio.Radio:
       configuration_ = configuration
 
   /** See $radio.Radio.transmit. */
-  transmit payload/ByteArray -> none:
-    if payload.size > radio.MAX-PAYLOAD-SIZE: throw "LORA_PAYLOAD_TOO_LARGE"
+  transmit payload/io.Data -> none:
+    if payload.byte-size > radio.MAX-PAYLOAD-SIZE:
+      throw "LORA_PAYLOAD_TOO_LARGE"
     mutex_.do:
       ensure-open_
       set-mode_ MODE-STANDBY_
@@ -127,10 +129,11 @@ class Sx127x implements radio.Radio:
       write-register_ REG-IRQ-FLAGS_ 0xff
       write-register_ REG-FIFO-ADDR-PTR_ 0
       write-burst_ REG-FIFO_ payload
-      write-register_ REG-PAYLOAD-LENGTH_ payload.size
+      write-register_ REG-PAYLOAD-LENGTH_ payload.byte-size
       set-mode_ MODE-TX_
       try:
-        wait-for-irq_ IRQ-TX-DONE_ --timeout-ms=15_000
+        deadline-us := Time.monotonic-us + 15_000 * 1_000
+        wait-for-irq_ IRQ-TX-DONE_ deadline-us
       finally:
         write-register_ REG-IRQ-FLAGS_ 0xff
         set-mode_ MODE-STANDBY_
@@ -142,9 +145,7 @@ class Sx127x implements radio.Radio:
       write-register_ REG-DIO-MAPPING-1_ 0x00
       write-register_ REG-IRQ-FLAGS_ 0xff
       set-mode_ MODE-RX-CONTINUOUS_
-      deadline := timeout-ms == null
-          ? null
-          : Time.monotonic-us + timeout-ms * 1_000
+      deadline := timeout-ms and (Time.monotonic-us + timeout-ms * 1_000)
       try:
         while true:
           irq := read-register_ REG-IRQ-FLAGS_
@@ -254,10 +255,9 @@ class Sx127x implements radio.Radio:
         : (milliamps + 30) / 10
     write-register_ REG-OCP_ (0x20 | (trim & 0x1f))
 
-  wait-for-irq_ mask/int --timeout-ms/int -> none:
-    deadline := Time.monotonic-us + timeout-ms * 1_000
+  wait-for-irq_ mask/int deadline-us/int -> none:
     while ((read-register_ REG-IRQ-FLAGS_) & mask) == 0:
-      remaining := deadline - Time.monotonic-us
+      remaining := deadline-us - Time.monotonic-us
       if remaining <= 0: throw "LORA_TX_TIMEOUT"
       if dio0_:
         exception := catch --unwind=(: it != DEADLINE-EXCEEDED-ERROR):
@@ -277,10 +277,10 @@ class Sx127x implements radio.Radio:
   write-register-16_ address/int value/int -> none:
     device_.write #[address | 0x80, (value >> 8) & 0xff, value & 0xff]
 
-  write-burst_ address/int data/ByteArray -> none:
-    command := ByteArray (data.size + 1)
+  write-burst_ address/int data/io.Data -> none:
+    command := ByteArray (data.byte-size + 1)
     command[0] = address | 0x80
-    command.replace 1 data
+    data.write-to-byte-array command --at=1 0 data.byte-size
     device_.write command
 
   read-burst_ address/int size/int -> ByteArray:

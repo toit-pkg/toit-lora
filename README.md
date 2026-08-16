@@ -37,10 +37,6 @@ main:
 See `examples/heltec-ping.toit` and `examples/lilygo-pong.toit` for complete
 resource cleanup and a bidirectional test.
 
-The old `toitware/toit-lora` source was reviewed. Its sole driver was an
-SX127x register implementation named `Sx1262`; this implementation replaces it
-with separate, silicon-correct drivers.
-
 The `toitlang/qemu` source and releases were also checked. They do not model an
 SX126x, SX127x, or LoRa peripheral, so real-board tests provide the useful
 hardware coverage here.
