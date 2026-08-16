@@ -104,9 +104,11 @@ interface Radio:
   transmit payload/ByteArray -> none
 
   /**
-  Receives one packet, or returns null when $timeout-ms expires.
+  Receives one packet, or returns null when no valid header is detected before
+    $timeout-ms expires.
 
-  A negative timeout waits indefinitely.
+  Once a header is detected, the call may continue past $timeout-ms while the
+    remainder of the packet is received. A negative timeout waits indefinitely.
   */
   receive --timeout-ms/int=-1 -> Packet?
 
@@ -118,3 +120,23 @@ interface Radio:
 
   /** Leaves the radio in a safe low-power state. */
   close -> none
+
+maximum-packet-airtime-us_ configuration/Configuration -> int:
+  symbol-us :=
+      (((1 << configuration.spreading-factor) * 1_000_000)
+          + configuration.bandwidth - 1) / configuration.bandwidth
+  low-data-rate-optimize := symbol-us > 16_000 ? 1 : 0
+  numerator :=
+      8 * MAX-PAYLOAD-SIZE
+          - 4 * configuration.spreading-factor
+          + 28
+          + (configuration.crc ? 16 : 0)
+  denominator := 4 * (configuration.spreading-factor
+      - 2 * low-data-rate-optimize)
+  encoded-blocks := numerator <= 0
+      ? 0
+      : (numerator + denominator - 1) / denominator
+  payload-symbols := 8 + encoded-blocks * configuration.coding-rate
+  quarter-symbols :=
+      4 * configuration.preamble-length + 17 + 4 * payload-symbols
+  return (quarter-symbols * symbol-us + 3) / 4

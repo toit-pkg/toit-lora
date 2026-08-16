@@ -49,6 +49,7 @@ class Sx1262 implements radio.Radio:
 
   static IRQ-TX-DONE_ ::= 1 << 0
   static IRQ-RX-DONE_ ::= 1 << 1
+  static IRQ-HEADER-VALID_ ::= 1 << 4
   static IRQ-HEADER-ERROR_ ::= 1 << 5
   static IRQ-CRC-ERROR_ ::= 1 << 6
   static IRQ-TIMEOUT_ ::= 1 << 9
@@ -153,22 +154,36 @@ class Sx1262 implements radio.Radio:
       ensure-open_
       write-command_ SET-STANDBY_ #[STANDBY-RC_]
       set-packet-parameters_ configuration_ radio.MAX-PAYLOAD-SIZE
-      irq-mask := IRQ-RX-DONE_ | IRQ-HEADER-ERROR_ | IRQ-CRC-ERROR_ | IRQ-TIMEOUT_
+      irq-mask := IRQ-RX-DONE_
+          | IRQ-HEADER-VALID_
+          | IRQ-HEADER-ERROR_
+          | IRQ-CRC-ERROR_
+          | IRQ-TIMEOUT_
       set-irq-mapping_ irq-mask irq-mask
       clear-irq_ IRQ-ALL_
-      radio-timeout := timeout-ms < 0 ? 0xffffff : timeout-units_ timeout-ms
-      write-command_ SET-RX_ (uint24_ radio-timeout)
-      software-timeout := timeout-ms < 0 ? -1 : timeout-ms + 100
+      write-command_ SET-RX_ (uint24_ 0xffffff)
+      deadline := timeout-ms < 0
+          ? null
+          : Time.monotonic-us + timeout-ms * 1_000
       try:
-        irq := wait-for-irq_ irq-mask --timeout-ms=software-timeout
-        if (irq & (IRQ-TIMEOUT_ | IRQ-HEADER-ERROR_ | IRQ-CRC-ERROR_)) != 0:
-          return null
-        status := read-command_ GET-RX-BUFFER-STATUS_ #[] 2
-        payload := read-buffer_ status[1] status[0]
-        packet-status := read-command_ GET-PACKET-STATUS_ #[] 3
-        rssi := -packet-status[0].to-float / 2.0
-        snr := signed-byte_ packet-status[1]
-        return radio.Packet payload rssi (snr.to-float / 4.0)
+        while true:
+          irq := get-irq_
+          if (irq & (IRQ-TIMEOUT_ | IRQ-HEADER-ERROR_ | IRQ-CRC-ERROR_)) != 0:
+            return null
+          if (irq & IRQ-HEADER-VALID_) != 0:
+            clear-irq_ IRQ-HEADER-VALID_
+            if deadline:
+              deadline = Time.monotonic-us +
+                  (radio.maximum-packet-airtime-us_ configuration_)
+          if (irq & IRQ-RX-DONE_) != 0:
+            status := read-command_ GET-RX-BUFFER-STATUS_ #[] 2
+            payload := read-buffer_ status[1] status[0]
+            packet-status := read-command_ GET-PACKET-STATUS_ #[] 3
+            rssi := -packet-status[0].to-float / 2.0
+            snr := signed-byte_ packet-status[1]
+            return radio.Packet payload rssi (snr.to-float / 4.0)
+          if deadline and Time.monotonic-us >= deadline: return null
+          sleep --ms=1
       finally:
         clear-irq_ IRQ-ALL_
         write-command_ SET-STANDBY_ #[STANDBY-RC_]
