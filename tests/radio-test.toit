@@ -77,13 +77,13 @@ class FakeRadio implements lora.Radio:
   transmit payload/ByteArray -> none:
     transmitted = payload
 
-  receive --timeout-ms/int=-1 -> lora.Packet?:
+  receive --timeout-ms/int?=null -> lora.Packet?:
     this.timeout-ms = timeout-ms
     return lora.Packet #[4, 5, 6] -91.0 7.5
 
   standby -> none:
     standby-count++
 
-  sleep-radio -> none:
+  sleep -> none:
 
   close -> none:

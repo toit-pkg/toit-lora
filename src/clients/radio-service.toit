@@ -34,7 +34,7 @@ class RadioService-v1 extends services.ServiceClient
   transmit payload/ByteArray -> none:
     invoke_ api.TRANSMIT-INDEX-v1 payload
 
-  receive --timeout-ms/int=-1 -> lora.Packet?:
+  receive --timeout-ms/int?=null -> lora.Packet?:
     encoded := invoke_ api.RECEIVE-INDEX-v1 timeout-ms
     if not encoded: return null
     return lora.Packet encoded[0] encoded[1] encoded[2]
@@ -42,5 +42,5 @@ class RadioService-v1 extends services.ServiceClient
   standby -> none:
     invoke_ api.STANDBY-INDEX-v1 null
 
-  sleep-radio -> none:
-    invoke_ api.SLEEP-RADIO-INDEX-v1 null
+  sleep -> none:
+    invoke_ api.SLEEP-INDEX-v1 null

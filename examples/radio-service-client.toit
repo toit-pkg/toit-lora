@@ -5,10 +5,17 @@
 import lora
 import lora.radio-service
 
+/**
+Sends one LoRa packet through an installed LoRa radio service provider.
+
+The provider owns the board-specific radio and pin configuration; this client
+  only selects the common 868.1 MHz radio configuration.
+*/
 main:
   radio := radio-service.v1
   try:
-    radio.configure (lora.Configuration --frequency=868_100_000)
+    configuration := lora.Configuration
+    radio.configure configuration
     radio.transmit "hello-from-service-client".to-byte-array
     print "LORA_SERVICE_TX_DONE"
   finally:

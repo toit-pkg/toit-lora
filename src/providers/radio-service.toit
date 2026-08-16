@@ -35,8 +35,8 @@ class RadioServiceProvider extends services.ServiceProvider
         continue.do packet ? [packet.payload, packet.rssi, packet.snr] : null
       if index == api.STANDBY-INDEX-v1:
         continue.do radio_.standby
-      if index == api.SLEEP-RADIO-INDEX-v1:
-        continue.do radio_.sleep-radio
+      if index == api.SLEEP-INDEX-v1:
+        continue.do radio_.sleep
       unreachable
 
   on-closed client/int -> none:

@@ -24,15 +24,15 @@ interface RadioService-v1:
   /**
   Receives one packet, or returns null when $timeout-ms expires.
 
-  A negative timeout waits indefinitely.
+  A null timeout waits indefinitely.
   */
-  receive --timeout-ms/int=-1 -> Packet?
+  receive --timeout-ms/int?=null -> Packet?
 
   /** Puts the remote radio into standby mode. */
   standby -> none
 
   /** Puts the remote radio into its lowest-power sleep mode. */
-  sleep-radio -> none
+  sleep -> none
 
   /** Releases the service client and its exclusive radio ownership. */
   close -> none
