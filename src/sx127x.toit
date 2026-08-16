@@ -51,6 +51,7 @@ class Sx127x implements radio.Radio:
 
   static IRQ-RX-DONE_ ::= 1 << 6
   static IRQ-PAYLOAD-CRC-ERROR_ ::= 1 << 5
+  static IRQ-VALID-HEADER_ ::= 1 << 4
   static IRQ-TX-DONE_ ::= 1 << 3
 
   device_/spi.Device
@@ -142,6 +143,11 @@ class Sx127x implements radio.Radio:
       try:
         while true:
           irq := read-register_ REG-IRQ-FLAGS_
+          if (irq & IRQ-VALID-HEADER_) != 0:
+            write-register_ REG-IRQ-FLAGS_ IRQ-VALID-HEADER_
+            if deadline:
+              deadline = Time.monotonic-us +
+                  (radio.maximum-packet-airtime-us_ configuration_)
           if (irq & IRQ-RX-DONE_) != 0:
             write-register_ REG-IRQ-FLAGS_ irq
             if (irq & IRQ-PAYLOAD-CRC-ERROR_) != 0:
