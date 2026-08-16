@@ -4,7 +4,6 @@
 
 import encoding.hex as hex
 import encoding.tison
-import gpio
 import spi
 import system.assets
 
@@ -16,6 +15,13 @@ import lorawan.region
 
 import .adapter as adapter
 
+/**
+Joins The Things Stack over OTAA and sends one LoRaWAN uplink.
+
+The `board` Jaguar define selects either a LILYGO T3 LoRa32 V1.6 or a Heltec
+  WiFi LoRa 32 V3. The remaining defines provide OTAA credentials and the
+  optional EU868 data rate.
+*/
 main:
   configuration := assets.decode.get "jag.defines"
       --if-present=: tison.decode it
@@ -32,30 +38,23 @@ main:
 run-lilygo_ configuration/Map -> none:
   bus := spi.Bus --clock=5 --mosi=27 --miso=19
   device := bus.device --cs=18 --frequency=4_000_000
-  reset := gpio.Pin 23
-  dio0 := gpio.Pin 26
   try:
-    radio := sx127x.Sx127x device --reset=reset --dio0=dio0
+    radio := sx127x.Sx127x device --reset=23 --dio0=26
     try:
       join-and-send_ radio configuration
     finally:
       radio.close
   finally:
-    dio0.close
-    reset.close
     device.close
     bus.close
 
 run-heltec_ configuration/Map -> none:
   bus := spi.Bus --clock=9 --mosi=10 --miso=11
   device := bus.device --cs=8 --frequency=4_000_000
-  busy := gpio.Pin 13
-  reset := gpio.Pin 12
-  dio1 := gpio.Pin 14
   try:
-    radio := sx1262.Sx1262 device busy
-        --reset=reset
-        --dio1=dio1
+    radio := sx1262.Sx1262 device 13
+        --reset=12
+        --dio1=14
         --tcxo-voltage=1_800
         --dio2-rf-switch
     try:
@@ -63,9 +62,6 @@ run-heltec_ configuration/Map -> none:
     finally:
       radio.close
   finally:
-    dio1.close
-    reset.close
-    busy.close
     device.close
     bus.close
 

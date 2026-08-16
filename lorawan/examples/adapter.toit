@@ -18,7 +18,7 @@ class RadioAdapter implements lorawan.Radio:
       --tx-power/int
       --receive/bool=false
       -> none:
-    radio_.configure (lora.Configuration
+    configuration := lora.Configuration
         --frequency=parameters.frequency
         --bandwidth=parameters.bandwidth
         --spreading-factor=parameters.spreading-factor
@@ -27,7 +27,8 @@ class RadioAdapter implements lorawan.Radio:
         --crc=not receive
         --invert-iq=receive
         --sync-word=lora.PUBLIC-SYNC-WORD
-        --tx-power=tx-power)
+        --tx-power=tx-power
+    radio_.configure configuration
 
   /** See $lorawan.Radio.transmit. */
   transmit payload/ByteArray -> none:
