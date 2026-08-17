@@ -20,8 +20,11 @@ class RecordingRadio implements lora.Radio:
 
   transmit payload/io.Data -> none:
 
-  receive -> lora.Packet:
+  receive --header-timeout-ms/int?=null -> lora.Packet?:
     receive-times.add Time.monotonic-us
+    if header-timeout-ms:
+      sleep-ms_ header-timeout-ms
+      return null
     receive-signal_.wait
     unreachable
 
@@ -73,3 +76,6 @@ caller-deadline-is-not-swallowed-test:
 
   expect-throw DEADLINE-EXCEEDED-ERROR:
     with-timeout --ms=20: endpoint.send #[1]
+
+sleep-ms_ milliseconds/int -> none:
+  sleep --ms=milliseconds

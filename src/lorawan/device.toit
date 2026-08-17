@@ -168,16 +168,8 @@ class ClassA:
     radio_.configure configuration
 
   receive-window_ -> ByteArray?:
-    caller-deadline := Task.current.deadline
-    window-deadline := Time.monotonic-us + receive-window-ms * 1_000
-    packet/lora.Packet? := null
-    timed-out := catch --unwind=(: it != DEADLINE-EXCEEDED-ERROR):
-      with-timeout --ms=receive-window-ms: packet = radio_.receive
-    if timed-out:
-      if caller-deadline and caller-deadline <= window-deadline:
-        rethrow timed-out.value timed-out.trace
-      return null
-    return packet.payload
+    packet := radio_.receive --header-timeout-ms=receive-window-ms
+    return packet and packet.payload
 
   static reconstruct-counter_ -> int
       expected/int
