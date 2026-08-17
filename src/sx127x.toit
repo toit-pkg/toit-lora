@@ -138,17 +138,21 @@ class Sx127x implements radio.Radio:
         set-mode_ MODE-STANDBY_
 
   /** See $radio.Radio.receive. */
-  receive -> radio.Packet:
+  receive --header-timeout-ms/int?=null -> radio.Packet?:
     return mutex_.do:
       ensure-open_
       write-register_ REG-DIO-MAPPING-1_ 0x00
       write-register_ REG-IRQ-FLAGS_ 0xff
       set-mode_ MODE-RX-CONTINUOUS_
+      deadline := header-timeout-ms and
+          (Time.monotonic-us + header-timeout-ms * 1_000)
       try:
         while true:
           irq := read-register_ REG-IRQ-FLAGS_
           if (irq & IRQ-VALID-HEADER_) != 0:
             write-register_ REG-IRQ-FLAGS_ IRQ-VALID-HEADER_
+            deadline = Time.monotonic-us +
+                (radio.maximum-packet-airtime-us_ configuration_)
           if (irq & IRQ-RX-DONE_) != 0:
             write-register_ REG-IRQ-FLAGS_ irq
             if (irq & IRQ-PAYLOAD-CRC-ERROR_) != 0:
@@ -163,6 +167,7 @@ class Sx127x implements radio.Radio:
             rssi := rssi-offset + (read-register_ REG-PKT-RSSI-VALUE_).to-float
             if snr < 0: rssi += snr
             return radio.Packet payload rssi snr
+          if deadline and Time.monotonic-us >= deadline: return null
           sleep-ms_ 1
       finally:
         set-mode_ MODE-STANDBY_
