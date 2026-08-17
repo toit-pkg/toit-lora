@@ -2,6 +2,7 @@
 // Use of this source code is governed by an MIT-style license that can be
 // found in the LICENSE file.
 
+import monitor
 import system.storage
 
 import ..device as device
@@ -16,6 +17,7 @@ class FlashStateStore implements provider.StateStore:
   initial-device-nonce_/int
   session-key_/string
   next-device-nonce-key_/string
+  nonce-mutex_/monitor.Mutex ::= monitor.Mutex
 
   constructor
       path/string
@@ -50,27 +52,24 @@ class FlashStateStore implements provider.StateStore:
 
   /** See $provider.StateStore.reserve-device-nonce. */
   reserve-device-nonce -> int:
-    reserved := 0
-    critical-do --no-respect-deadline:
+    return nonce-mutex_.do:
       next := bucket_.get next-device-nonce-key_
           --if-absent=: initial-device-nonce_
       if next is not int: throw "LORAWAN_CORRUPT_PERSISTENT_STATE"
       if not 0 <= next <= 0xffff: throw "LORAWAN_DEVICE_NONCE_EXHAUSTED"
       bucket_[next-device-nonce-key_] = next + 1
-      reserved = next
-    return reserved
+      next
 
   /** See $provider.StateStore.save-session. */
   save-session -> none
       session/device.Session:
-    critical-do --no-respect-deadline:
-      bucket_[session-key_] = [
-        session.device-address,
-        session.network-session-key,
-        session.application-session-key,
-        session.uplink-counter,
-        session.downlink-counter,
-      ]
+    bucket_[session-key_] = [
+      session.device-address,
+      session.network-session-key,
+      session.application-session-key,
+      session.uplink-counter,
+      session.downlink-counter,
+    ]
 
   /** Closes the backing storage bucket. */
   close -> none:

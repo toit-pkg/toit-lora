@@ -73,7 +73,9 @@ Direct use remains available and does not import `system.services`.
 - `service/` contains board-independent raw LoRa and LoRaWAN provider
   containers configured with a radio family and pins. The timing-sensitive
   LoRaWAN provider owns the plain radio directly rather than calling the
-  raw-radio service.
+  raw-radio service. Both providers remain installed while opening radio
+  hardware only for active clients. The LoRaWAN service stores state in the
+  qualified flash bucket path `toit.io/lorawan/<device-eui>` by default.
 
 ## Verification
 

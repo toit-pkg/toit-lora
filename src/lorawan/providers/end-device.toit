@@ -39,7 +39,12 @@ interface StateStore:
   */
   reserve-device-nonce -> int
 
-  /** Saves $session, including both frame counters. */
+  /**
+  Saves $session, including both frame counters.
+
+  Implementations must respect caller deadlines. The provider orders writes
+    before radio operations and shields only an accepted downlink counter.
+  */
   save-session -> none
       session/device.Session
 
@@ -81,22 +86,34 @@ class MemoryStateStore implements StateStore:
 /** Provides serialized service access to one LoRaWAN Class A end device. */
 class EndDeviceServiceProvider extends services.ServiceProvider
     implements services.ServiceHandler:
-  end-device_/device.ClassA
+  open_/Lambda
+  close_/Lambda
+  end-device_/device.ClassA? := null
   state-store_/StateStore
   credentials_/OtaaCredentials?
+  clients_/int := 0
   mutex_/monitor.Mutex ::= monitor.Mutex
 
   constructor
-      --end-device/device.ClassA
+      --open/Lambda
+      --close/Lambda
       --state-store/StateStore
       --credentials/OtaaCredentials?=null
       --name/string=NAME:
-    end-device_ = end-device
+    open_ = open
+    close_ = close
     state-store_ = state-store
     credentials_ = credentials
-    end-device_.session = state-store_.load-session
     super name --major=MAJOR --minor=MINOR
     provides api.SELECTOR-v1 --handler=this
+
+  on-opened client/int -> none:
+    mutex_.do: clients_++
+
+  on-closed client/int -> none:
+    mutex_.do:
+      clients_--
+      if clients_ == 0: close-end-device_
 
   handle -> any
       index/int
@@ -104,43 +121,57 @@ class EndDeviceServiceProvider extends services.ServiceProvider
       --gid/int
       --client/int:
     return mutex_.do:
+      end-device := ensure-end-device_
       if index == api.ACTIVATED-INDEX-v1:
-        continue.do end-device_.session != null
+        continue.do end-device.session != null
       if index == api.JOIN-INDEX-v1:
-        continue.do join_
+        continue.do join_ end-device
       if index == api.SEND-INDEX-v1:
-        continue.do send_ arguments
+        continue.do send_ end-device arguments
       unreachable
 
-  join_ -> bool:
-    if end-device_.session: return true
+  join_ end-device/device.ClassA -> bool:
+    if end-device.session: return true
     credentials := credentials_
     if not credentials: throw "LORAWAN_OTAA_NOT_CONFIGURED"
     device-nonce := state-store_.reserve-device-nonce
-    session := end-device_.join
+    previous-rx1-offset := end-device.rx1-offset
+    previous-rx2-data-rate := end-device.rx2-data-rate
+    previous-receive-delay-ms := end-device.receive-delay-ms
+    session := end-device.join
         --application-key=credentials.application-key
         --join-eui=credentials.join-eui
         --device-eui=credentials.device-eui
         --device-nonce=device-nonce
     if not session: return false
-    state-store_.save-session session
+    saved := false
+    try:
+      state-store_.save-session session
+      saved = true
+    finally:
+      if not saved:
+        end-device.session = null
+        end-device.rx1-offset = previous-rx1-offset
+        end-device.rx2-data-rate = previous-rx2-data-rate
+        end-device.receive-delay-ms = previous-receive-delay-ms
     return true
 
   send_ -> List?
+      end-device/device.ClassA
       arguments/List:
     if arguments.size != 4: throw "LORAWAN_INVALID_SERVICE_ARGUMENTS"
-    downlink/frames.Downlink? := null
-    try:
-      downlink = end-device_.send arguments[0]
-          --port=arguments[1]
-          --confirmed=arguments[2]
-          --adr=arguments[3]
-          --on-counter-reserved=:
-            state-store_.save-session end-device_.session
-    finally:
-      session := end-device_.session
-      if session: state-store_.save-session session
+    downlink := end-device.send arguments[0]
+        --port=arguments[1]
+        --confirmed=arguments[2]
+        --adr=arguments[3]
+        --on-counter-reserved=:
+          state-store_.save-session end-device.session
     if not downlink: return null
+    // A received downlink must be committed before it is exposed to the
+    // client, otherwise a reset could allow the same frame to be processed
+    // again.
+    critical-do --no-respect-deadline:
+      state-store_.save-session end-device.session
     return [
       downlink.confirmed,
       downlink.adr,
@@ -152,14 +183,39 @@ class EndDeviceServiceProvider extends services.ServiceProvider
       downlink.payload,
     ]
 
-/** Installs a service provider for $end-device using $state-store. */
+  ensure-end-device_ -> device.ClassA:
+    if end-device_: return end-device_
+    opened/device.ClassA := open_.call
+    succeeded := false
+    try:
+      opened.session = state-store_.load-session
+      end-device_ = opened
+      succeeded = true
+      return opened
+    finally:
+      if not succeeded: close_.call opened
+
+  close-end-device_ -> none:
+    end-device := end-device_
+    end-device_ = null
+    if end-device: close_.call end-device
+
+/**
+Installs a service provider that obtains a Class A end device from $open.
+
+Calls $open on the first client operation and $close after the last client
+  disconnects. The $state-store persists activation and frame-counter state
+  across those hardware lifetimes.
+*/
 install -> EndDeviceServiceProvider
-    --end-device/device.ClassA
+    --open/Lambda
+    --close/Lambda
     --state-store/StateStore
     --credentials/OtaaCredentials?=null
     --name/string=NAME:
   provider := EndDeviceServiceProvider
-      --end-device=end-device
+      --open=open
+      --close=close
       --state-store=state-store
       --credentials=credentials
       --name=name

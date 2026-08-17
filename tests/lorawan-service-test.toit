@@ -29,30 +29,52 @@ end-device-service-test:
       --network-session-key=key
       --application-session-key=key
   state := provider.MemoryStateStore --session=session
-  radio := FakeRadio state
-  class-a := device.ClassA
-      --radio=radio
-      --region=region.Eu868
-      --receive-delay-ms=1
-      --receive-window-ms=1
-  installed := provider.install --end-device=class-a --state-store=state
+  radios/List := []
+  installed := provider.install
+      --open=::
+        radio := FakeRadio state
+        radios.add radio
+        device.ClassA
+            --radio=radio
+            --region=region.Eu868
+            --receive-delay-ms=1
+            --receive-window-ms=1
+      --close=:: |end-device/device.ClassA|
+        (radios[radios.size - 1] as FakeRadio).close
+      --state-store=state
   client := end-device-service.v1
+  peer := end-device-service.v1
   try:
+    expect radios.is-empty
     expect client.activated
+    expect-equals 1 radios.size
+    radio/FakeRadio := radios[0]
     expect client.join
     expect (client.send #[1, 2, 3] --port=7) == null
-    expect-equals 1 class-a.session.uplink-counter
     expect-equals 1 state.load-session.uplink-counter
     expect-equals 1 radio.persisted-counter-at-transmit
     expect-equals 1 radio.transmitted.size
+    client.close
+    expect-equals 0 radio.close-count
+    expect peer.activated
   finally:
     client.close
+    peer.close
+  expect-equals 1 (radios[0] as FakeRadio).close-count
+  second := end-device-service.v1
+  try:
+    expect second.activated
+    expect-equals 2 radios.size
+  finally:
+    second.close
     installed.uninstall
+  expect-equals 1 (radios[1] as FakeRadio).close-count
 
 class FakeRadio implements lora.Radio:
   state_/provider.StateStore
   transmitted/List := []
   persisted-counter-at-transmit/int? := null
+  close-count/int := 0
   receive-signal_/monitor.Signal ::= monitor.Signal
 
   constructor .state_:
@@ -74,3 +96,4 @@ class FakeRadio implements lora.Radio:
   sleep -> none:
 
   close -> none:
+    close-count++

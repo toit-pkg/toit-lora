@@ -43,30 +43,41 @@ main args/List:
       "next-device-nonce-key"
       "next-device-nonce"
 
-  opened := hardware.open config
   state := flash-state.FlashStateStore storage-path
       --initial-device-nonce=initial-device-nonce
       --session-key=session-key
       --next-device-nonce-key=next-device-nonce-key
-  class-a := device.ClassA
-      --radio=opened.radio
-      --region=regional-plan
-      --data-rate=data-rate
-      --tx-power=tx-power
-      --receive-window-ms=receive-window-ms
   credentials := provider.OtaaCredentials
       --application-key=application-key
       --join-eui=join-eui
       --device-eui=device-eui
-  installed := provider.install
-      --end-device=class-a
+
+  opened/hardware.OpenedRadio? := null
+  open-end-device := ::
+    candidate := hardware.open config
+    succeeded := false
+    try:
+      class-a := device.ClassA
+          --radio=candidate
+          --region=regional-plan
+          --data-rate=data-rate
+          --tx-power=tx-power
+          --receive-window-ms=receive-window-ms
+      opened = candidate
+      succeeded = true
+      class-a
+    finally:
+      if not succeeded: candidate.close
+  close-end-device := :: | _/device.ClassA |
+    candidate := opened
+    opened = null
+    if candidate: candidate.close
+
+  provider.install
+      --open=open-end-device
+      --close=close-end-device
       --state-store=state
       --credentials=credentials
-  try:
-    installed.uninstall --wait
-  finally:
-    state.close
-    opened.close
 
 region-from-string_ -> region.Region
     name/string:

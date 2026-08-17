@@ -58,11 +58,17 @@ jag container install lorawan service/lorawan.toit \
 jag run examples/lorawan-service-client.toit --device DEVICE
 ```
 
+The provider remains installed indefinitely. It opens and configures the radio
+on the first client operation, shares it between connected clients, and closes
+the hardware after the last client disconnects.
+
 For production deployment, attach the credentials as protected container
 configuration rather than placing secrets in shell history. The provider uses
-a device-specific flash bucket by default. It reserves each DevNonce in flash
-before transmitting the Join-Request and saves session keys and both frame
-counters after protocol operations.
+a device-specific `toit.io/lorawan/<device-eui>` flash bucket by default. It
+reserves each DevNonce before transmitting the Join-Request, saves a joined
+session before exposing it, and persists each uplink counter before radio
+transmission. An authenticated downlink counter is committed before the
+downlink is returned to a client.
 
 The OTAA example reads `app-key`, `join-eui`, `device-eui`, and `device-nonce`
 from Jaguar defines. No device identity or root key is compiled into the
