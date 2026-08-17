@@ -14,13 +14,15 @@ main args/List:
   radio-configuration := radio-configuration_ config
   provider.install --open=::
     opened := hardware.open config
+    result/lora.Radio? := null
     succeeded := false
     try:
       opened.configure radio-configuration
+      result = opened
       succeeded = true
-      opened
     finally:
       if not succeeded: opened.close
+    result as lora.Radio
 
 radio-configuration_ config/Map -> lora.Configuration:
   return lora.Configuration

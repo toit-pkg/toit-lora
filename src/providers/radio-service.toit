@@ -55,7 +55,8 @@ class RadioServiceProvider extends services.ServiceProvider
     return timed-out ? null : packet
 
   ensure-radio_ -> lora.Radio:
-    if radio_: return radio_
+    existing := radio_
+    if existing: return existing
     opened/lora.Radio := open_.call
     radio_ = opened
     return opened
