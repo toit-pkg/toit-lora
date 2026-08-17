@@ -5,7 +5,7 @@
 import i2c
 
 import bme280
-import lorawan.end-device
+import lora.lorawan.end-device
 
 /**
 Reads the MoleNet v7.1 BME280 and sends signed centi-degrees Celsius on port 1.

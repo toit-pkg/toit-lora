@@ -24,12 +24,14 @@ main:
     configuration := lora.Configuration
     radio.configure configuration
     print "MOLENET_TX"
-    radio.transmit "ping-from-molenet".to-byte-array
-    packet := radio.receive --timeout-ms=5_000
-    if packet:
-      print "MOLENET_RX $(packet.payload.to-string) RSSI=$(packet.rssi) SNR=$(packet.snr)"
-    else:
+    radio.transmit "ping-from-molenet"
+    packet/lora.Packet? := null
+    timed-out := catch --unwind=(: it != DEADLINE-EXCEEDED-ERROR):
+      with-timeout --ms=5_000: packet = radio.receive
+    if timed-out:
       print "MOLENET_RX_TIMEOUT"
+    else:
+      print "MOLENET_RX $(packet.payload.to-string) RSSI=$(packet.rssi) SNR=$(packet.snr)"
   finally:
     radio.close
     device.close
