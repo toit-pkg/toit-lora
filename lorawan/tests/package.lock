@@ -1,6 +1,0 @@
-sdk: ^2.0.0-alpha.197
-prefixes:
-  lorawan: lorawan
-packages:
-  lorawan:
-    path: ..

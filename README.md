@@ -68,10 +68,9 @@ Direct use remains available and does not import `system.services`.
 
 ## Packages
 
-- The root package contains the plain LoRa drivers and raw service API.
-- `lorawan/` is an independent package boundary prepared to move to its own
-  repository. It does not depend on SPI, GPIO, or this driver package.
-- `lorawan/examples/adapter.toit` bridges the two plain in-process APIs.
+- The package contains the plain LoRa drivers, raw service API, and LoRaWAN
+  support under `lora.lorawan`.
+- `examples/lorawan-adapter.toit` bridges the two plain in-process APIs.
 - `service/radio.toit` is a board-independent provider container configured
   with a radio family, pins, and LoRa PHY settings.
 
@@ -79,5 +78,4 @@ Direct use remains available and does not import `system.services`.
 
 ```sh
 make test
-cd lorawan && make test
 ```

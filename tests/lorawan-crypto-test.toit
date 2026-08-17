@@ -6,9 +6,9 @@ import encoding.hex as hex
 import expect show *
 import crypto.aes as aes
 
-import lorawan.crypto
-import lorawan.frames
-import lorawan.region
+import lora.lorawan.crypto
+import lora.lorawan.frames
+import lora.lorawan.region
 
 main:
   cmac-vectors-test

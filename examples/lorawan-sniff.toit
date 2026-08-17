@@ -68,9 +68,11 @@ sniff_ radio/lora.Radio frequency/int -> none:
       --sync-word=lora.PUBLIC-SYNC-WORD
   radio.configure configuration
   print "LORAWAN_SNIFF_WAIT"
-  packet := radio.receive --timeout-ms=60_000
-  if packet:
+  packet/lora.Packet? := null
+  timed-out := catch --unwind=(: it != DEADLINE-EXCEEDED-ERROR):
+    with-timeout --ms=60_000: packet = radio.receive
+  if timed-out:
+    print "LORAWAN_SNIFF_TIMEOUT"
+  else:
     print "LORAWAN_SNIFF_RX $(hex.encode packet.payload)"
     print "LORAWAN_SNIFF_SIGNAL rssi=$(packet.rssi) snr=$(packet.snr)"
-  else:
-    print "LORAWAN_SNIFF_TIMEOUT"

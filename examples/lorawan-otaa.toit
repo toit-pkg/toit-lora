@@ -10,10 +10,10 @@ import system.assets
 import lora
 import lora.sx1262
 import lora.sx127x
-import lorawan.device
-import lorawan.region
+import lora.lorawan.device
+import lora.lorawan.region
 
-import .adapter as adapter
+import .lorawan-adapter as adapter
 
 /**
 Joins The Things Stack over OTAA and sends one LoRaWAN uplink.

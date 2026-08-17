@@ -30,5 +30,3 @@ jobs:
           toit-version: ${{ steps.toit-version.outputs.version }}
       - name: Test LoRa
         run: make test
-      - name: Test LoRaWAN
-        run: make -C lorawan test

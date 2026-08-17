@@ -1,7 +1,6 @@
 # LoRaWAN for Toit
 
-Standalone LoRaWAN 1.0.x end-device building blocks, prepared as a separate
-Toit package.
+LoRaWAN 1.0.x end-device building blocks in the `lora` package.
 
 Implemented:
 

@@ -3,8 +3,8 @@
 // found in the examples/LICENSE file.
 
 import lora
-import lorawan.device as lorawan
-import lorawan.region
+import lora.lorawan.device as lorawan
+import lora.lorawan.region
 
 /** Adapts a `lora.Radio` to the standalone LoRaWAN radio boundary. */
 class RadioAdapter implements lorawan.Radio:
@@ -36,5 +36,7 @@ class RadioAdapter implements lorawan.Radio:
 
   /** See $lorawan.Radio.receive. */
   receive --timeout-ms/int -> ByteArray?:
-    packet := radio_.receive --timeout-ms=timeout-ms
-    return packet ? packet.payload : null
+    packet/lora.Packet? := null
+    timed-out := catch --unwind=(: it != DEADLINE-EXCEEDED-ERROR):
+      with-timeout --ms=timeout-ms: packet = radio_.receive
+    return timed-out ? null : packet.payload

@@ -1,5 +1,0 @@
-dependencies:
-  lorawan:
-    path: ..
-  lora:
-    path: ../..

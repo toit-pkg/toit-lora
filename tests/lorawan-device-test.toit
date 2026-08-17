@@ -4,8 +4,8 @@
 
 import expect show *
 
-import lorawan.device
-import lorawan.region
+import lora.lorawan.device
+import lora.lorawan.region
 
 class RecordingRadio implements device.Radio:
   configuration-times/List := []

@@ -2,10 +2,10 @@
 // Use of this source code is governed by an MIT-style license that can be
 // found in the LICENSE file.
 
-import .crypto
-import .device
-import .frames
-import .region
+import .lorawan.crypto
+import .lorawan.device
+import .lorawan.frames
+import .lorawan.region
 
 export *
 
