@@ -32,22 +32,14 @@ class Downlink:
   payload/ByteArray
 
   constructor
-      --confirmed/bool
-      --adr/bool
-      --acknowledgement/bool
-      --frame-pending/bool
-      --frame-counter/int
-      --options/ByteArray
-      --port/int?
-      --payload/ByteArray:
-    this.confirmed = confirmed
-    this.adr = adr
-    this.acknowledgement = acknowledgement
-    this.frame-pending = frame-pending
-    this.frame-counter = frame-counter
-    this.options = options
-    this.port = port
-    this.payload = payload
+      --.confirmed/bool
+      --.adr/bool
+      --.acknowledgement/bool
+      --.frame-pending/bool
+      --.frame-counter/int
+      --.options/ByteArray
+      --.port/int?
+      --.payload/ByteArray:
 
 /** Decoded and authenticated LoRaWAN 1.0.x join-accept. */
 class JoinAccept:
@@ -62,24 +54,15 @@ class JoinAccept:
   channel-frequency-list/ByteArray
 
   constructor
-      --application-nonce/ByteArray
-      --network-id/ByteArray
-      --device-address/int
-      --network-session-key/ByteArray
-      --application-session-key/ByteArray
-      --rx1-offset/int
-      --rx2-data-rate/int
-      --receive-delay-seconds/int
-      --channel-frequency-list/ByteArray:
-    this.application-nonce = application-nonce
-    this.network-id = network-id
-    this.device-address = device-address
-    this.network-session-key = network-session-key
-    this.application-session-key = application-session-key
-    this.rx1-offset = rx1-offset
-    this.rx2-data-rate = rx2-data-rate
-    this.receive-delay-seconds = receive-delay-seconds
-    this.channel-frequency-list = channel-frequency-list
+      --.application-nonce/ByteArray
+      --.network-id/ByteArray
+      --.device-address/int
+      --.network-session-key/ByteArray
+      --.application-session-key/ByteArray
+      --.rx1-offset/int
+      --.rx2-data-rate/int
+      --.receive-delay-seconds/int
+      --.channel-frequency-list/ByteArray:
 
 /**
 Builds a LoRaWAN 1.0.x join-request PHYPayload.

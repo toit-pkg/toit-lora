@@ -11,16 +11,11 @@ class RadioParameters:
   max-payload-size/int
 
   constructor
-      --channel/int
-      --frequency/int
-      --bandwidth/int
-      --spreading-factor/int
-      --max-payload-size/int:
-    this.channel = channel
-    this.frequency = frequency
-    this.bandwidth = bandwidth
-    this.spreading-factor = spreading-factor
-    this.max-payload-size = max-payload-size
+      --.channel/int
+      --.frequency/int
+      --.bandwidth/int
+      --.spreading-factor/int
+      --.max-payload-size/int:
 
 /** Regional channel-plan operations needed by a Class A end device. */
 interface Region:

@@ -45,22 +45,15 @@ class ClassA:
   constructor
       --radio/lora.Radio
       --region/region.Region
-      --session/Session?=null
-      --data-rate/int=0
-      --tx-power/int=14
-      --rx1-offset/int=0
-      --rx2-data-rate/int?=null
-      --receive-delay-ms/int=1_000
-      --receive-window-ms/int=1_000:
+      --.session/Session?=null
+      --.data-rate/int=0
+      --.tx-power/int=14
+      --.rx1-offset/int=0
+      --.rx2-data-rate/int?=null
+      --.receive-delay-ms/int=1_000
+      --.receive-window-ms/int=1_000:
     radio_ = radio
     region_ = region
-    this.session = session
-    this.data-rate = data-rate
-    this.tx-power = tx-power
-    this.rx1-offset = rx1-offset
-    this.rx2-data-rate = rx2-data-rate
-    this.receive-delay-ms = receive-delay-ms
-    this.receive-window-ms = receive-window-ms
 
   /**
   Sends one Class A uplink and returns a valid downlink received in RX1 or RX2.
