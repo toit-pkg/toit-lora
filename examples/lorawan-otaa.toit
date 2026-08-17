@@ -13,8 +13,6 @@ import lora.sx127x
 import lora.lorawan.device
 import lora.lorawan.region
 
-import .lorawan-adapter as adapter
-
 /**
 Joins The Things Stack over OTAA and sends one LoRaWAN uplink.
 
@@ -73,23 +71,23 @@ join-and-send_ radio/lora.Radio configuration/Map -> none:
   configured-data-rate := configuration.get "data-rate"
   data-rate := configured-data-rate is int ? configured-data-rate : 0
   end-device := device.ClassA
-      (adapter.RadioAdapter radio)
-      region.Eu868
+      --radio=radio
+      --region=region.Eu868
       --data-rate=data-rate
   print "OTAA_JOIN_REQUEST nonce=$device-nonce"
   session := end-device.join
-      application-key
-      join-eui
-      device-eui
-      device-nonce
+      --application-key=application-key
+      --join-eui=join-eui
+      --device-eui=device-eui
+      --device-nonce=device-nonce
   if not session:
     print "OTAA_JOIN_TIMEOUT"
     return
-  print "OTAA_JOINED address=$(session.device-address)"
-  downlink := end-device.send "hello-from-toit".to-byte-array
+  print "OTAA_JOINED address=$session.device-address"
+  downlink := end-device.send "hello-from-toit"
   print "OTAA_UPLINK_SENT"
   if downlink:
-    print "OTAA_DOWNLINK port=$(downlink.port) bytes=$(downlink.payload.size)"
+    print "OTAA_DOWNLINK port=$downlink.port bytes=$downlink.payload.size"
 
 required-string_ configuration/Map key/string -> string:
   value := configuration.get key

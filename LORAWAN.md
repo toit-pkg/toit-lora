@@ -14,9 +14,8 @@ Implemented:
 - EU868 and US915 channel/data-rate plans
 - blocking Class A OTAA and ABP RX1/RX2 flow
 
-The package deliberately exposes a tiny `device.Radio` interface. This keeps
-it independent of any radio chip; `examples/adapter.toit` shows how to bridge
-the SX126x/SX127x package.
+The Class A end device uses the package's board-independent `lora.Radio`
+interface and works with either SX126x or SX127x drivers.
 
 The OTAA example reads `app-key`, `join-eui`, `device-eui`, and `device-nonce`
 from Jaguar defines. No device identity or root key is compiled into the

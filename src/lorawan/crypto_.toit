@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 import crypto.aes as aes
+import io
 
 /** LoRaWAN uplink direction value. */
 UPLINK ::= 0
@@ -13,7 +14,9 @@ DOWNLINK ::= 1
 /**
 Computes AES-CMAC as defined by RFC 4493.
 */
-cmac key/ByteArray message/ByteArray -> ByteArray:
+cmac -> ByteArray
+    key/ByteArray
+    message/ByteArray:
   validate-key_ key
   zero := ByteArray 16
   l := aes-block_ key zero
@@ -42,18 +45,17 @@ cmac key/ByteArray message/ByteArray -> ByteArray:
 /**
 Computes a four-byte LoRaWAN data-frame MIC.
 */
-data-mic
+data-mic -> ByteArray
     network-session-key/ByteArray
     message/ByteArray
     --direction/int
     --device-address/int
-    --frame-counter/int
-    -> ByteArray:
+    --frame-counter/int:
   b0 := ByteArray 16
   b0[0] = 0x49
   b0[5] = direction
-  put-uint32-le_ b0 6 device-address
-  put-uint32-le_ b0 10 frame-counter
+  io.LITTLE-ENDIAN.put-uint32 b0 6 device-address
+  io.LITTLE-ENDIAN.put-uint32 b0 10 frame-counter
   b0[15] = message.size
   input := concatenate_ b0 message
   return (cmac network-session-key input)[0..4]
@@ -64,13 +66,12 @@ Encrypts or decrypts a LoRaWAN FRMPayload.
 LoRaWAN payload encryption is symmetric, so applying this function twice with
   the same parameters returns the original payload.
 */
-crypt-payload
+crypt-payload -> ByteArray
     session-key/ByteArray
     payload/ByteArray
     --direction/int
     --device-address/int
-    --frame-counter/int
-    -> ByteArray:
+    --frame-counter/int:
   validate-key_ session-key
   result := payload.copy
   blocks := (payload.size + 15) / 16
@@ -78,8 +79,8 @@ crypt-payload
     a := ByteArray 16
     a[0] = 0x01
     a[5] = direction
-    put-uint32-le_ a 6 device-address
-    put-uint32-le_ a 10 frame-counter
+    io.LITTLE-ENDIAN.put-uint32 a 6 device-address
+    io.LITTLE-ENDIAN.put-uint32 a 10 frame-counter
     a[15] = index + 1
     stream := aes-block_ session-key a
     from := index * 16
@@ -89,7 +90,9 @@ crypt-payload
   return result
 
 /** Computes the MIC used by join-request and join-accept messages. */
-join-mic application-key/ByteArray message/ByteArray -> ByteArray:
+join-mic -> ByteArray
+    application-key/ByteArray
+    message/ByteArray:
   return (cmac application-key message)[0..4]
 
 /**
@@ -98,18 +101,19 @@ Decrypts the encrypted portion of a LoRaWAN 1.0.x join-accept.
 The network uses the AES decrypt operation when constructing a join-accept, so
   an end device intentionally uses AES encryption here.
 */
-decrypt-join-accept application-key/ByteArray encrypted/ByteArray -> ByteArray:
+decrypt-join-accept -> ByteArray
+    application-key/ByteArray
+    encrypted/ByteArray:
   if encrypted.size == 0 or (encrypted.size % 16) != 0:
     throw "LORAWAN_INVALID_JOIN_ACCEPT_LENGTH"
   return aes-crypt-blocks_ application-key encrypted --encrypt
 
 /** Derives the LoRaWAN 1.0.x network session key. */
-derive-network-session-key
+derive-network-session-key -> ByteArray
     application-key/ByteArray
     application-nonce/ByteArray
     network-id/ByteArray
-    device-nonce/int
-    -> ByteArray:
+    device-nonce/int:
   return derive-session-key_
       application-key
       application-nonce
@@ -118,12 +122,11 @@ derive-network-session-key
       0x01
 
 /** Derives the LoRaWAN 1.0.x application session key. */
-derive-application-session-key
+derive-application-session-key -> ByteArray
     application-key/ByteArray
     application-nonce/ByteArray
     network-id/ByteArray
-    device-nonce/int
-    -> ByteArray:
+    device-nonce/int:
   return derive-session-key_
       application-key
       application-nonce
@@ -131,13 +134,12 @@ derive-application-session-key
       device-nonce
       0x02
 
-derive-session-key_
+derive-session-key_ -> ByteArray
     key/ByteArray
     application-nonce/ByteArray
     network-id/ByteArray
     device-nonce/int
-    kind/int
-    -> ByteArray:
+    kind/int:
   validate-key_ key
   if application-nonce.size != 3 or network-id.size != 3:
     throw "LORAWAN_INVALID_JOIN_PARAMETER"
@@ -149,14 +151,19 @@ derive-session-key_
   block[8] = (device-nonce >> 8) & 0xff
   return aes-block_ key block
 
-aes-block_ key/ByteArray block/ByteArray -> ByteArray:
+aes-block_ -> ByteArray
+    key/ByteArray
+    block/ByteArray:
   cipher := aes.AesEcb.encryptor key
   try:
     return cipher.encrypt block
   finally:
     cipher.close
 
-aes-crypt-blocks_ key/ByteArray input/ByteArray --encrypt/bool -> ByteArray:
+aes-crypt-blocks_ -> ByteArray
+    key/ByteArray
+    input/ByteArray
+    --encrypt/bool:
   cipher := encrypt
       ? aes.AesEcb.encryptor key
       : aes.AesEcb.decryptor key
@@ -171,7 +178,8 @@ aes-crypt-blocks_ key/ByteArray input/ByteArray --encrypt/bool -> ByteArray:
   finally:
     cipher.close
 
-subkey_ input/ByteArray -> ByteArray:
+subkey_ -> ByteArray
+    input/ByteArray:
   output := ByteArray 16
   carry := 0
   16.repeat: |offset|
@@ -182,17 +190,19 @@ subkey_ input/ByteArray -> ByteArray:
   if (input[0] & 0x80) != 0: output[15] ^= 0x87
   return output
 
-xor-in-place_ target/ByteArray other/ByteArray -> none:
+xor-in-place_ -> none
+    target/ByteArray
+    other/ByteArray:
   target.size.repeat: |index| target[index] ^= other[index]
 
-validate-key_ key/ByteArray -> none:
+validate-key_ -> none
+    key/ByteArray:
   if key.size != 16: throw "LORAWAN_INVALID_AES_KEY"
 
-concatenate_ first/ByteArray second/ByteArray -> ByteArray:
+concatenate_ -> ByteArray
+    first/ByteArray
+    second/ByteArray:
   result := ByteArray (first.size + second.size)
   result.replace 0 first
   result.replace first.size second
   return result
-
-put-uint32-le_ bytes/ByteArray offset/int value/int -> none:
-  4.repeat: |index| bytes[offset + index] = (value >> (index * 8)) & 0xff

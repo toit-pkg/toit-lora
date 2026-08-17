@@ -70,7 +70,6 @@ Direct use remains available and does not import `system.services`.
 
 - The package contains the plain LoRa drivers, raw service API, and LoRaWAN
   support under `lora.lorawan`.
-- `examples/lorawan-adapter.toit` bridges the two plain in-process APIs.
 - `service/radio.toit` is a board-independent provider container configured
   with a radio family, pins, and LoRa PHY settings.
 

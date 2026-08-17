@@ -6,7 +6,7 @@ import encoding.hex as hex
 import expect show *
 import crypto.aes as aes
 
-import lora.lorawan.crypto
+import lora.lorawan.crypto_ as crypto
 import lora.lorawan.frames
 import lora.lorawan.region
 
@@ -48,7 +48,11 @@ join-request-test:
   key := hex.decode "00112233445566778899aabbccddeeff"
   join-eui := hex.decode "0102030405060708"
   device-eui := hex.decode "1122334455667788"
-  request := frames.build-join-request key join-eui device-eui 0x1234
+  request := frames.build-join-request
+      --application-key=key
+      --join-eui=join-eui
+      --device-eui=device-eui
+      --device-nonce=0x1234
   expect-equals 23 request.size
   expect-equals (hex.decode "0807060504030201") request[1..9]
   expect-equals (hex.decode "8877665544332211") request[9..17]
@@ -59,9 +63,17 @@ invalid-device-nonce-test:
   join-eui := hex.decode "0102030405060708"
   device-eui := hex.decode "1122334455667788"
   expect-throw "LORAWAN_INVALID_DEVICE_NONCE":
-    frames.build-join-request key join-eui device-eui -1
+    frames.build-join-request
+        --application-key=key
+        --join-eui=join-eui
+        --device-eui=device-eui
+        --device-nonce=-1
   expect-throw "LORAWAN_INVALID_DEVICE_NONCE":
-    frames.build-join-request key join-eui device-eui 0x1_0000
+    frames.build-join-request
+        --application-key=key
+        --join-eui=join-eui
+        --device-eui=device-eui
+        --device-nonce=0x1_0000
 
 join-accept-test:
   key := hex.decode "00112233445566778899aabbccddeeff"
@@ -76,7 +88,9 @@ join-accept-test:
   frame := ByteArray 17
   frame[0] = 0x20
   frame.replace 1 encrypted
-  accepted := frames.parse-join-accept key frame 0x1234
+  accepted := frames.parse-join-accept frame
+      --application-key=key
+      --device-nonce=0x1234
   expect-equals 0x2601_1bda accepted.device-address
   expect-equals 1 accepted.receive-delay-seconds
   expect-equals 16 accepted.network-session-key.size
@@ -90,18 +104,21 @@ join-accept-with-channel-list-test:
   authenticated[0] = 0x20
   authenticated.replace 1 plaintext 0 28
   plaintext.replace 28 (crypto.join-mic key authenticated)
-  encrypted := ByteArray 32
   cipher := aes.AesEcb.decryptor key
+  encrypted := ByteArray 32
   try:
     2.repeat: |index|
       offset := index * 16
-      encrypted.replace offset (cipher.decrypt plaintext[offset..offset + 16])
+      encrypted.replace offset
+          cipher.decrypt plaintext[offset..offset + 16]
   finally:
     cipher.close
   frame := ByteArray 33
   frame[0] = 0x20
   frame.replace 1 encrypted
-  accepted := frames.parse-join-accept key frame 0x1234
+  accepted := frames.parse-join-accept frame
+      --application-key=key
+      --device-nonce=0x1234
   expect-equals 0x2601_1bda accepted.device-address
   expect-equals plaintext[12..28] accepted.channel-frequency-list
 
@@ -130,7 +147,9 @@ downlink-round-trip-test:
   frame := ByteArray (message.size + 4)
   frame.replace 0 message
   frame.replace message.size mic
-  decoded := frames.parse-downlink network-key application-key frame
+  decoded := frames.parse-downlink frame
+      --network-session-key=network-key
+      --application-session-key=application-key
       --device-address=address
       --frame-counter=counter
   expect-equals plaintext decoded.payload
@@ -139,15 +158,18 @@ downlink-round-trip-test:
 
 region-test:
   eu := region.Eu868
-  eu-uplink := eu.uplink 1 5
+  eu-uplink := eu.uplink --frame-counter=1 --data-rate=5
   expect-equals 868_300_000 eu-uplink.frequency
   expect-equals 7 eu-uplink.spreading-factor
   expect-equals 9 (eu.rx2 --data-rate=3).spreading-factor
   us := region.Us915
-  us-uplink := us.uplink 3 3
+  us-uplink := us.uplink --frame-counter=3 --data-rate=3
   expect-equals 902_900_000 us-uplink.frequency
   expect-equals 242 us-uplink.max-payload-size
-  us-downlink := us.rx1 us-uplink.channel 3 0
+  us-downlink := us.rx1
+      --uplink-channel=us-uplink.channel
+      --data-rate=3
+      --offset=0
   expect-equals 7 us-downlink.spreading-factor
   expect-equals 500_000 us-downlink.bandwidth
   expect-equals 925_100_000 us-downlink.frequency
