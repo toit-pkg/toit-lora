@@ -27,11 +27,13 @@ main:
     radio.configure configuration
     print "HELTEC_TX"
     radio.transmit "ping-from-heltec"
-    packet := radio.receive --timeout-ms=5_000
-    if packet:
-      print "HELTEC_RX $(packet.payload.to-string) RSSI=$(packet.rssi) SNR=$(packet.snr)"
-    else:
+    packet/lora.Packet? := null
+    timed-out := catch --unwind=(: it != DEADLINE-EXCEEDED-ERROR):
+      with-timeout --ms=5_000: packet = radio.receive
+    if timed-out:
       print "HELTEC_RX_TIMEOUT"
+    else:
+      print "HELTEC_RX $(packet.payload.to-string) RSSI=$(packet.rssi) SNR=$(packet.snr)"
   finally:
     radio.close
     device.close
