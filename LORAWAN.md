@@ -19,19 +19,19 @@ interface and works with either SX126x or SX127x drivers.
 
 ## End-device service
 
-`lorawan.end-device` exposes the Class A device through a versioned service.
+`lora.lorawan.end-device` exposes the Class A device through a versioned service.
 The provider owns the physical radio, OTAA credentials, DevNonce, session keys,
 and frame counters. It serializes calls from all client containers, so an
 application only needs to join and send:
 
 ```toit
-import lorawan.end-device
+import lora.lorawan.end-device
 
 main:
   device := end-device.v1
   try:
     if not device.activated and not device.join: return
-    device.send "hello".to-byte-array --port=1
+    device.send "hello" --port=1
   finally:
     device.close
 ```
@@ -55,7 +55,7 @@ jag container install lorawan service/lorawan.toit \
     -D join-eui=JOIN_EUI \
     -D device-eui=DEVICE_EUI
 
-jag run lorawan/examples/service-client.toit --device DEVICE
+jag run examples/lorawan-service-client.toit --device DEVICE
 ```
 
 For production deployment, attach the credentials as protected container

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD0-style license that can be
 // found in the examples/LICENSE file.
 
-import lorawan.end-device
+import lora.lorawan.end-device
 
 /**
 Joins and sends one uplink through an installed LoRaWAN end-device service.
@@ -19,6 +19,6 @@ main:
     downlink := device.send "hello-from-service-client".to-byte-array
     print "LORAWAN_UPLINK_SENT"
     if downlink:
-      print "LORAWAN_DOWNLINK port=$(downlink.port) bytes=$(downlink.payload.size)"
+      print "LORAWAN_DOWNLINK port=$downlink.port bytes=$downlink.payload.size"
   finally:
     device.close

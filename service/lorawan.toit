@@ -4,14 +4,13 @@
 
 import encoding.hex as hex
 
-import lorawan.device
-import lorawan.providers.end-device as provider
-import lorawan.providers.flash-state
-import lorawan.region
+import lora.lorawan.device
+import lora.lorawan.providers.end-device as provider
+import lora.lorawan.providers.flash-state
+import lora.lorawan.region
 
 import .configuration as configuration
 import .hardware as hardware
-import .lorawan-radio-adapter as adapter
 
 main args/List:
   if not args.is-empty: throw "Configure LoRaWAN using container assets"
@@ -38,26 +37,39 @@ main args/List:
       config
       "storage-path"
       "toit.io/lorawan/$device-eui-text"
+  session-key := configuration.optional-string config "session-key" "session"
+  next-device-nonce-key := configuration.optional-string
+      config
+      "next-device-nonce-key"
+      "next-device-nonce"
 
   opened := hardware.open config
   state := flash-state.FlashStateStore storage-path
       --initial-device-nonce=initial-device-nonce
+      --session-key=session-key
+      --next-device-nonce-key=next-device-nonce-key
   class-a := device.ClassA
-      (adapter.LorawanRadioAdapter opened.radio)
-      regional-plan
+      --radio=opened.radio
+      --region=regional-plan
       --data-rate=data-rate
       --tx-power=tx-power
       --receive-window-ms=receive-window-ms
-  credentials := provider.OtaaCredentials application-key join-eui device-eui
-  installed := provider.install class-a state --credentials=credentials
+  credentials := provider.OtaaCredentials
+      --application-key=application-key
+      --join-eui=join-eui
+      --device-eui=device-eui
+  installed := provider.install
+      --end-device=class-a
+      --state-store=state
+      --credentials=credentials
   try:
-    while true: sleep --ms=60_000
+    installed.uninstall --wait
   finally:
-    installed.uninstall
     state.close
     opened.close
 
-region-from-string_ name/string -> region.Region:
+region-from-string_ -> region.Region
+    name/string:
   if name == "eu868": return region.Eu868
   if name == "us915": return region.Us915
   throw "LORAWAN_UNKNOWN_REGION"

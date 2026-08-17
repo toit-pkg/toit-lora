@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 import system.services
+import io
 
 import ..apis.end-device as api
 import ..end-device as service
@@ -22,20 +23,19 @@ class EndDeviceService-v1 extends services.ServiceClient
   join -> bool:
     return invoke_ api.JOIN-INDEX-v1 null
 
-  send
-      payload/ByteArray
+  send -> frames.Downlink?
+      payload/io.Data
       --port/int=1
       --confirmed/bool=false
-      --adr/bool=false
-      -> frames.Downlink?:
+      --adr/bool=false:
     encoded := invoke_ api.SEND-INDEX-v1 [payload, port, confirmed, adr]
     if not encoded: return null
     return frames.Downlink
-        encoded[0]
-        encoded[1]
-        encoded[2]
-        encoded[3]
-        encoded[4]
-        encoded[5]
-        encoded[6]
-        encoded[7]
+        --confirmed=encoded[0]
+        --adr=encoded[1]
+        --acknowledgement=encoded[2]
+        --frame-pending=encoded[3]
+        --frame-counter=encoded[4]
+        --options=encoded[5]
+        --port=encoded[6]
+        --payload=encoded[7]

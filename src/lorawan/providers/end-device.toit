@@ -19,7 +19,10 @@ class OtaaCredentials:
   join-eui/ByteArray
   device-eui/ByteArray
 
-  constructor .application-key .join-eui .device-eui:
+  constructor
+      --.application-key/ByteArray
+      --.join-eui/ByteArray
+      --.device-eui/ByteArray:
     if application-key.size != 16: throw "LORAWAN_INVALID_APPLICATION_KEY"
     if join-eui.size != 8 or device-eui.size != 8:
       throw "LORAWAN_INVALID_EUI"
@@ -37,7 +40,8 @@ interface StateStore:
   reserve-device-nonce -> int
 
   /** Saves $session, including both frame counters. */
-  save-session session/device.Session -> none
+  save-session -> none
+      session/device.Session
 
 /** Volatile state store intended for tests and short-lived experiments. */
 class MemoryStateStore implements StateStore:
@@ -54,21 +58,23 @@ class MemoryStateStore implements StateStore:
 
   /** See $StateStore.reserve-device-nonce. */
   reserve-device-nonce -> int:
-    if next-device-nonce_ < 0 or next-device-nonce_ > 0xffff:
+    if not 0 <= next-device-nonce_ <= 0xffff:
       throw "LORAWAN_DEVICE_NONCE_EXHAUSTED"
     reserved := next-device-nonce_
     next-device-nonce_++
     return reserved
 
   /** See $StateStore.save-session. */
-  save-session session/device.Session -> none:
+  save-session -> none
+      session/device.Session:
     session_ = clone-session_ session
 
-  static clone-session_ session/device.Session -> device.Session:
+  static clone-session_ -> device.Session
+      session/device.Session:
     return device.Session
-        session.device-address
-        session.network-session-key
-        session.application-session-key
+        --device-address=session.device-address
+        --network-session-key=session.network-session-key
+        --application-session-key=session.application-session-key
         --uplink-counter=session.uplink-counter
         --downlink-counter=session.downlink-counter
 
@@ -81,16 +87,22 @@ class EndDeviceServiceProvider extends services.ServiceProvider
   mutex_/monitor.Mutex ::= monitor.Mutex
 
   constructor
-      .end-device_
-      .state-store_
+      --end-device/device.ClassA
+      --state-store/StateStore
       --credentials/OtaaCredentials?=null
       --name/string=NAME:
+    end-device_ = end-device
+    state-store_ = state-store
     credentials_ = credentials
     end-device_.session = state-store_.load-session
     super name --major=MAJOR --minor=MINOR
     provides api.SELECTOR-v1 --handler=this
 
-  handle index/int arguments/any --gid/int --client/int -> any:
+  handle -> any
+      index/int
+      arguments/any
+      --gid/int
+      --client/int:
     return mutex_.do:
       if index == api.ACTIVATED-INDEX-v1:
         continue.do end-device_.session != null
@@ -106,15 +118,16 @@ class EndDeviceServiceProvider extends services.ServiceProvider
     if not credentials: throw "LORAWAN_OTAA_NOT_CONFIGURED"
     device-nonce := state-store_.reserve-device-nonce
     session := end-device_.join
-        credentials.application-key
-        credentials.join-eui
-        credentials.device-eui
-        device-nonce
+        --application-key=credentials.application-key
+        --join-eui=credentials.join-eui
+        --device-eui=credentials.device-eui
+        --device-nonce=device-nonce
     if not session: return false
     state-store_.save-session session
     return true
 
-  send_ arguments/List -> List?:
+  send_ -> List?
+      arguments/List:
     if arguments.size != 4: throw "LORAWAN_INVALID_SERVICE_ARGUMENTS"
     downlink/frames.Downlink? := null
     try:
@@ -122,7 +135,7 @@ class EndDeviceServiceProvider extends services.ServiceProvider
           --port=arguments[1]
           --confirmed=arguments[2]
           --adr=arguments[3]
-          --on-counter-reserved=::
+          --on-counter-reserved=:
             state-store_.save-session end-device_.session
     finally:
       session := end-device_.session
@@ -140,15 +153,14 @@ class EndDeviceServiceProvider extends services.ServiceProvider
     ]
 
 /** Installs a service provider for $end-device using $state-store. */
-install
-    end-device/device.ClassA
-    state-store/StateStore
+install -> EndDeviceServiceProvider
+    --end-device/device.ClassA
+    --state-store/StateStore
     --credentials/OtaaCredentials?=null
-    --name/string=NAME
-    -> EndDeviceServiceProvider:
+    --name/string=NAME:
   provider := EndDeviceServiceProvider
-      end-device
-      state-store
+      --end-device=end-device
+      --state-store=state-store
       --credentials=credentials
       --name=name
   provider.install

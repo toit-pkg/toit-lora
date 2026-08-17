@@ -2,6 +2,8 @@
 // Use of this source code is governed by an MIT-style license that can be
 // found in the LICENSE file.
 
+import io
+
 import .clients.end-device as clients
 import .frames
 
@@ -26,12 +28,11 @@ interface EndDeviceService-v1:
 
   The $port must be an application port supported by the protocol layer.
   */
-  send
-      payload/ByteArray
+  send -> Downlink?
+      payload/io.Data
       --port/int=1
       --confirmed/bool=false
       --adr/bool=false
-      -> Downlink?
 
   /** Releases the service client. */
   close -> none

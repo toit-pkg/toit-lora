@@ -14,16 +14,24 @@ NEXT-DEVICE-NONCE-KEY_ ::= "next-device-nonce"
 class FlashStateStore implements provider.StateStore:
   bucket_/storage.Bucket
   initial-device-nonce_/int
+  session-key_/string
+  next-device-nonce-key_/string
 
-  constructor path/string --initial-device-nonce/int=0:
-    if initial-device-nonce < 0 or initial-device-nonce > 0xffff:
+  constructor
+      path/string
+      --initial-device-nonce/int=0
+      --session-key/string=SESSION-KEY_
+      --next-device-nonce-key/string=NEXT-DEVICE-NONCE-KEY_:
+    if not 0 <= initial-device-nonce <= 0xffff:
       throw "LORAWAN_INVALID_DEVICE_NONCE"
     initial-device-nonce_ = initial-device-nonce
+    session-key_ = session-key
+    next-device-nonce-key_ = next-device-nonce-key
     bucket_ = storage.Bucket.open --flash path
 
   /** See $provider.StateStore.load-session. */
   load-session -> device.Session?:
-    encoded := bucket_.get SESSION-KEY_
+    encoded := bucket_.get session-key_
     if not encoded: return null
     if encoded is not List or encoded.size != 5:
       throw "LORAWAN_CORRUPT_PERSISTENT_STATE"
@@ -34,30 +42,35 @@ class FlashStateStore implements provider.StateStore:
         encoded[4] is not int:
       throw "LORAWAN_CORRUPT_PERSISTENT_STATE"
     return device.Session
-        encoded[0]
-        encoded[1]
-        encoded[2]
+        --device-address=encoded[0]
+        --network-session-key=encoded[1]
+        --application-session-key=encoded[2]
         --uplink-counter=encoded[3]
         --downlink-counter=encoded[4]
 
   /** See $provider.StateStore.reserve-device-nonce. */
   reserve-device-nonce -> int:
-    next := bucket_.get NEXT-DEVICE-NONCE-KEY_
-        --if-absent=: initial-device-nonce_
-    if next is not int: throw "LORAWAN_CORRUPT_PERSISTENT_STATE"
-    if next < 0 or next > 0xffff: throw "LORAWAN_DEVICE_NONCE_EXHAUSTED"
-    bucket_[NEXT-DEVICE-NONCE-KEY_] = next + 1
-    return next
+    reserved := 0
+    critical-do --no-respect-deadline:
+      next := bucket_.get next-device-nonce-key_
+          --if-absent=: initial-device-nonce_
+      if next is not int: throw "LORAWAN_CORRUPT_PERSISTENT_STATE"
+      if not 0 <= next <= 0xffff: throw "LORAWAN_DEVICE_NONCE_EXHAUSTED"
+      bucket_[next-device-nonce-key_] = next + 1
+      reserved = next
+    return reserved
 
   /** See $provider.StateStore.save-session. */
-  save-session session/device.Session -> none:
-    bucket_[SESSION-KEY_] = [
-      session.device-address,
-      session.network-session-key,
-      session.application-session-key,
-      session.uplink-counter,
-      session.downlink-counter,
-    ]
+  save-session -> none
+      session/device.Session:
+    critical-do --no-respect-deadline:
+      bucket_[session-key_] = [
+        session.device-address,
+        session.network-session-key,
+        session.application-session-key,
+        session.uplink-counter,
+        session.downlink-counter,
+      ]
 
   /** Closes the backing storage bucket. */
   close -> none:

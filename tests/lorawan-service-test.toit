@@ -3,11 +3,14 @@
 // found in the tests/LICENSE file.
 
 import expect show *
+import io
+import monitor
 
-import lorawan.device
-import lorawan.end-device as end-device-service
-import lorawan.providers.end-device as provider
-import lorawan.region
+import lora
+import lora.lorawan.device
+import lora.lorawan.end-device as end-device-service
+import lora.lorawan.providers.end-device as provider
+import lora.lorawan.region
 
 main:
   memory-state-test
@@ -21,15 +24,18 @@ memory-state-test:
 
 end-device-service-test:
   key := ByteArray 16
-  session := device.Session 0x2601_1bda key key
+  session := device.Session
+      --device-address=0x2601_1bda
+      --network-session-key=key
+      --application-session-key=key
   state := provider.MemoryStateStore --session=session
   radio := FakeRadio state
   class-a := device.ClassA
-      radio
-      region.Eu868
+      --radio=radio
+      --region=region.Eu868
       --receive-delay-ms=1
       --receive-window-ms=1
-  installed := provider.install class-a state
+  installed := provider.install --end-device=class-a --state-store=state
   client := end-device-service.v1
   try:
     expect client.activated
@@ -43,22 +49,28 @@ end-device-service-test:
     client.close
     installed.uninstall
 
-class FakeRadio implements device.Radio:
+class FakeRadio implements lora.Radio:
   state_/provider.StateStore
   transmitted/List := []
   persisted-counter-at-transmit/int? := null
+  receive-signal_/monitor.Signal ::= monitor.Signal
 
   constructor .state_:
 
-  configure
-      parameters/region.RadioParameters
-      --tx-power/int
-      --receive/bool=false
-      -> none:
+  configure -> none
+      configuration/lora.Configuration:
 
-  transmit payload/ByteArray -> none:
+  transmit -> none
+      payload/io.Data:
     persisted-counter-at-transmit = state_.load-session.uplink-counter
     transmitted.add payload
 
-  receive --timeout-ms/int -> ByteArray?:
-    return null
+  receive -> lora.Packet:
+    receive-signal_.wait
+    unreachable
+
+  standby -> none:
+
+  sleep -> none:
+
+  close -> none:

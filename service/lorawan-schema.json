@@ -65,6 +65,16 @@
     "storage-path": {
       "type": "string",
       "description": "Flash bucket path for DevNonce, session keys, and frame counters."
+    },
+    "session-key": {
+      "type": "string",
+      "default": "session",
+      "description": "Flash bucket key for the serialized LoRaWAN session."
+    },
+    "next-device-nonce-key": {
+      "type": "string",
+      "default": "next-device-nonce",
+      "description": "Flash bucket key for the next DevNonce value."
     }
   },
   "allOf": [

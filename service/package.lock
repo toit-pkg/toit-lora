@@ -1,9 +1,6 @@
 sdk: ^2.0.0-alpha.197
 prefixes:
   lora: toit-lora
-  lorawan: lorawan
 packages:
-  lorawan:
-    path: ../lorawan
   toit-lora:
     path: ..
