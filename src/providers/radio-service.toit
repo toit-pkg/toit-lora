@@ -27,13 +27,20 @@ class RadioServiceProvider extends services.ServiceProvider
       if index == api.TRANSMIT-INDEX-v1:
         continue.do radio_.transmit arguments
       if index == api.RECEIVE-INDEX-v1:
-        packet := radio_.receive --timeout-ms=arguments
+        packet := receive_ arguments
         continue.do packet ? [packet.payload, packet.rssi, packet.snr] : null
       if index == api.STANDBY-INDEX-v1:
         continue.do radio_.standby
       if index == api.SLEEP-INDEX-v1:
         continue.do radio_.sleep
       unreachable
+
+  receive_ timeout-ms/int? -> lora.Packet?:
+    if not timeout-ms: return radio_.receive
+    packet/lora.Packet? := null
+    timed-out := catch --unwind=(: it != DEADLINE-EXCEEDED-ERROR):
+      with-timeout --ms=timeout-ms: packet = radio_.receive
+    return timed-out ? null : packet
 
 /** Installs a service provider for the configured $radio. */
 install radio/lora.Radio --name/string=NAME -> RadioServiceProvider:

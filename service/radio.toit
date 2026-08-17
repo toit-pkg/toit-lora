@@ -15,9 +15,8 @@ main args/List:
   opened.radio.configure (radio-configuration_ config)
   installed := provider.install opened.radio
   try:
-    while true: sleep --ms=60_000
+    installed.uninstall --wait
   finally:
-    installed.uninstall
     opened.close
 
 radio-configuration_ config/Map -> lora.Configuration:

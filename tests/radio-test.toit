@@ -53,7 +53,6 @@ service-test:
     expect-equals -91.0 packet.rssi
     expect-equals 7.5 packet.snr
     expect-equals ["first".to-byte-array, #[1, 2, 3]] radio.transmitted
-    expect-equals 17 radio.timeout-ms
     first.close
     second.standby
     expect-equals 1 radio.standby-count
@@ -65,7 +64,6 @@ service-test:
 class FakeRadio implements lora.Radio:
   configuration/lora.Configuration? := null
   transmitted/List := []
-  timeout-ms/int? := null
   standby-count/int := 0
 
   configure configuration/lora.Configuration -> none:
@@ -76,8 +74,7 @@ class FakeRadio implements lora.Radio:
     payload.write-to-byte-array bytes --at=0 0 payload.byte-size
     transmitted.add bytes
 
-  receive --timeout-ms/int?=null -> lora.Packet?:
-    this.timeout-ms = timeout-ms
+  receive -> lora.Packet:
     return lora.Packet #[4, 5, 6] -91.0 7.5
 
   standby -> none:

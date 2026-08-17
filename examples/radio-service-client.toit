@@ -6,8 +6,6 @@ import lora.radio-service
 
 /**
 Sends one LoRa packet through an installed LoRa radio service provider.
-
-The provider owns the radio family, wiring, and LoRa PHY configuration.
 */
 main:
   radio := radio-service.v1
