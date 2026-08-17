@@ -159,7 +159,7 @@ class Sx1262 implements radio.Radio:
         write-command_ SET-STANDBY_ #[STANDBY-RC_]
 
   /** See $radio.Radio.receive. */
-  receive -> radio.Packet:
+  receive --header-timeout-ms/int?=null -> radio.Packet?:
     return mutex_.do:
       ensure-open_
       write-command_ SET-STANDBY_ #[STANDBY-RC_]
@@ -172,14 +172,19 @@ class Sx1262 implements radio.Radio:
       set-irq-mapping_ irq-mask irq-mask
       clear-irq_ IRQ-ALL_
       write-command_ SET-RX_ (uint24_ 0xffffff)
+      deadline := header-timeout-ms and
+          (Time.monotonic-us + header-timeout-ms * 1_000)
       try:
         while true:
-          irq := wait-for-irq_ irq-mask
-          if (irq & (IRQ-TIMEOUT_ | IRQ-HEADER-ERROR_ | IRQ-CRC-ERROR_)) != 0:
+          irq := wait-for-irq_ irq-mask --deadline-us=deadline
+          if (irq & IRQ-TIMEOUT_) != 0: return null
+          if (irq & (IRQ-HEADER-ERROR_ | IRQ-CRC-ERROR_)) != 0:
             clear-irq_ irq
             continue
           if (irq & IRQ-HEADER-VALID_) != 0:
             clear-irq_ IRQ-HEADER-VALID_
+            deadline = Time.monotonic-us +
+                (radio.maximum-packet-airtime-us_ configuration_)
           if (irq & IRQ-RX-DONE_) != 0:
             status := read-command_ GET-RX-BUFFER-STATUS_ #[] 2
             payload := read-buffer_ status[1] status[0]
@@ -313,12 +318,23 @@ class Sx1262 implements radio.Radio:
   clear-irq_ mask/int -> none:
     write-command_ CLEAR-IRQ-STATUS_ #[(mask >> 8) & 0xff, mask & 0xff]
 
-  wait-for-irq_ mask/int -> int:
+  wait-for-irq_ mask/int --deadline-us/int?=null -> int:
     while true:
       irq := get-irq_
       if (irq & mask) != 0: return irq
+      remaining := deadline-us and (deadline-us - Time.monotonic-us)
+      if remaining != null and remaining <= 0: return IRQ-TIMEOUT_
       if dio1_:
-        dio1_.wait-for 1
+        if remaining != null:
+          caller-deadline := Task.current.deadline
+          exception := catch --unwind=(: it != DEADLINE-EXCEEDED-ERROR):
+            with-timeout --us=remaining: dio1_.wait-for 1
+          if exception:
+            if caller-deadline and caller-deadline <= deadline-us:
+              rethrow exception.value exception.trace
+            return IRQ-TIMEOUT_
+        else:
+          dio1_.wait-for 1
       else:
         sleep-ms_ 1
     unreachable

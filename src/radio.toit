@@ -97,11 +97,14 @@ interface Radio:
   transmit payload/io.Data -> none
 
   /**
-  Waits for and receives one packet.
+  Waits for and receives one packet, or returns null if no valid header is
+    detected before $header-timeout-ms expires.
 
-  Use $with-timeout around this call when a deadline is required.
+  Once a header is detected, the driver allows enough time to finish the
+    packet. A caller task deadline still takes precedence throughout the
+    operation. A null header timeout waits indefinitely for a header.
   */
-  receive -> Packet
+  receive --header-timeout-ms/int?=null -> Packet?
 
   /** Puts the radio into standby mode. */
   standby -> none
@@ -111,3 +114,23 @@ interface Radio:
 
   /** Leaves the radio in a safe low-power state. */
   close -> none
+
+maximum-packet-airtime-us_ configuration/Configuration -> int:
+  symbol-us :=
+      (((1 << configuration.spreading-factor) * 1_000_000)
+          + configuration.bandwidth - 1) / configuration.bandwidth
+  low-data-rate-optimize := symbol-us > 16_000 ? 1 : 0
+  numerator :=
+      8 * MAX-PAYLOAD-SIZE
+          - 4 * configuration.spreading-factor
+          + 28
+          + (configuration.crc ? 16 : 0)
+  denominator := 4 * (configuration.spreading-factor
+      - 2 * low-data-rate-optimize)
+  encoded-blocks := numerator <= 0
+      ? 0
+      : (numerator + denominator - 1) / denominator
+  payload-symbols := 8 + encoded-blocks * configuration.coding-rate
+  quarter-symbols :=
+      4 * configuration.preamble-length + 17 + 4 * payload-symbols
+  return (quarter-symbols * symbol-us + 3) / 4
