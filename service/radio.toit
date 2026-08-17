@@ -11,13 +11,16 @@ import .hardware as hardware
 main args/List:
   if not args.is-empty: throw "Configure the radio using container assets"
   config := configuration.load
-  opened := hardware.open config
-  opened.radio.configure (radio-configuration_ config)
-  installed := provider.install opened.radio
-  try:
-    installed.uninstall --wait
-  finally:
-    opened.close
+  radio-configuration := radio-configuration_ config
+  provider.install --open=::
+    opened := hardware.open config
+    succeeded := false
+    try:
+      opened.configure radio-configuration
+      succeeded = true
+      opened
+    finally:
+      if not succeeded: opened.close
 
 radio-configuration_ config/Map -> lora.Configuration:
   return lora.Configuration

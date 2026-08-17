@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD0-style license that can be
 // found in the LICENSE file.
 
+import io
 import spi
 
 import lora
@@ -11,7 +12,7 @@ import lora.sx127x
 import .configuration as configuration
 
 /** Owns a radio and all transport resources used by it. */
-class OpenedRadio:
+class OpenedRadio implements lora.Radio:
   radio/lora.Radio
   bus_/spi.Bus
   device_/spi.Device
@@ -19,13 +20,37 @@ class OpenedRadio:
 
   constructor .radio .bus_ .device_:
 
+  /** See $lora.Radio.configure. */
+  configure configuration/lora.Configuration -> none:
+    radio.configure configuration
+
+  /** See $lora.Radio.transmit. */
+  transmit payload/io.Data -> none:
+    radio.transmit payload
+
+  /** See $lora.Radio.receive. */
+  receive -> lora.Packet:
+    return radio.receive
+
+  /** See $lora.Radio.standby. */
+  standby -> none:
+    radio.standby
+
+  /** See $lora.Radio.sleep. */
+  sleep -> none:
+    radio.sleep
+
   /** Closes the radio, SPI device, and SPI bus. */
   close -> none:
     if closed_: return
     closed_ = true
-    radio.close
-    device_.close
-    bus_.close
+    try:
+      radio.close
+    finally:
+      try:
+        device_.close
+      finally:
+        bus_.close
 
 /** Opens the radio described by $config. */
 open config/Map -> OpenedRadio:

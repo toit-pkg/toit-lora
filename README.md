@@ -42,7 +42,9 @@ resource cleanup and a bidirectional test.
 Applications in other containers can transmit and receive through the
 versioned `lora.radio-service` service. The service installation owns the LoRa
 PHY configuration, and operations from multiple clients are serialized on the
-shared modem.
+shared modem. The provider remains installed indefinitely, opens the configured
+radio on the first client operation, and closes it after the last client
+disconnects.
 
 Install the provider by supplying the radio family, wiring, and PHY settings.
 For example, the Heltec wiring with the default 868.1 MHz configuration is:

@@ -41,12 +41,17 @@ packet-test:
   expect-equals 8.25 packet.snr
 
 service-test:
-  radio := FakeRadio
-  installed := provider.install radio
+  radios/List := []
+  installed := provider.install --open=::
+    radio := FakeRadio
+    radios.add radio
+    radio
   first := service.v1
   second := service.v1
   try:
+    expect radios.is-empty
     first.transmit "first"
+    radio/FakeRadio := radios[0]
     second.transmit #[1, 2, 3]
     packet := first.receive --timeout-ms=17
     expect-equals #[4, 5, 6] packet.payload
@@ -54,17 +59,28 @@ service-test:
     expect-equals 7.5 packet.snr
     expect-equals ["first".to-byte-array, #[1, 2, 3]] radio.transmitted
     first.close
+    expect-equals 0 radio.close-count
     second.standby
     expect-equals 1 radio.standby-count
   finally:
     first.close
     second.close
+  expect-equals 1 radios.size
+  expect-equals 1 (radios[0] as FakeRadio).close-count
+  third := service.v1
+  try:
+    third.transmit "third"
+  finally:
+    third.close
     installed.uninstall
+  expect-equals 2 radios.size
+  expect-equals 1 (radios[1] as FakeRadio).close-count
 
 class FakeRadio implements lora.Radio:
   configuration/lora.Configuration? := null
   transmitted/List := []
   standby-count/int := 0
+  close-count/int := 0
 
   configure configuration/lora.Configuration -> none:
     this.configuration = configuration
@@ -83,3 +99,4 @@ class FakeRadio implements lora.Radio:
   sleep -> none:
 
   close -> none:
+    close-count++
