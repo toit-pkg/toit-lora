@@ -90,7 +90,7 @@ class FakeRadio implements lora.Radio:
     payload.write-to-byte-array bytes --at=0 0 payload.byte-size
     transmitted.add bytes
 
-  receive -> lora.Packet:
+  receive --header-timeout-ms/int?=null -> lora.Packet?:
     return lora.Packet #[4, 5, 6] -91.0 7.5
 
   standby -> none:

@@ -29,8 +29,8 @@ class OpenedRadio implements lora.Radio:
     radio.transmit payload
 
   /** See $lora.Radio.receive. */
-  receive -> lora.Packet:
-    return radio.receive
+  receive --header-timeout-ms/int?=null -> lora.Packet?:
+    return radio.receive --header-timeout-ms=header-timeout-ms
 
   /** See $lora.Radio.standby. */
   standby -> none:
