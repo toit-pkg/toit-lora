@@ -184,7 +184,8 @@ class EndDeviceServiceProvider extends services.ServiceProvider
     ]
 
   ensure-end-device_ -> device.ClassA:
-    if end-device_: return end-device_
+    existing := end-device_
+    if existing: return existing
     opened/device.ClassA := open_.call
     succeeded := false
     try:

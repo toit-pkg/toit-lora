@@ -55,9 +55,10 @@ main args/List:
   opened/hardware.OpenedRadio? := null
   open-end-device := ::
     candidate := hardware.open config
+    class-a/device.ClassA? := null
     succeeded := false
     try:
-      class-a := device.ClassA
+      class-a = device.ClassA
           --radio=candidate
           --region=regional-plan
           --data-rate=data-rate
@@ -65,9 +66,9 @@ main args/List:
           --receive-window-ms=receive-window-ms
       opened = candidate
       succeeded = true
-      class-a
     finally:
       if not succeeded: candidate.close
+    class-a as device.ClassA
   close-end-device := :: | _/device.ClassA |
     candidate := opened
     opened = null
