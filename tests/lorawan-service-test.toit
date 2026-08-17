@@ -87,7 +87,8 @@ class FakeRadio implements lora.Radio:
     persisted-counter-at-transmit = state_.load-session.uplink-counter
     transmitted.add payload
 
-  receive -> lora.Packet:
+  receive --header-timeout-ms/int?=null -> lora.Packet?:
+    if header-timeout-ms: return null
     receive-signal_.wait
     unreachable
 
