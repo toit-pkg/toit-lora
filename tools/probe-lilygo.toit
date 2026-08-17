@@ -5,4 +5,4 @@
 import .probe
 
 main:
-  probe-sx127x 23 5 27 19 18
+  probe-sx127x --reset=23 --clock=5 --mosi=27 --miso=19 --cs=18

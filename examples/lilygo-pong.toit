@@ -21,14 +21,16 @@ main:
     configuration := lora.Configuration
     radio.configure configuration
     print "LILYGO_RX_WAIT"
-    packet := radio.receive --timeout-ms=15_000
-    if packet:
+    packet/lora.Packet? := null
+    timed-out := catch --unwind=(: it != DEADLINE-EXCEEDED-ERROR):
+      with-timeout --ms=15_000: packet = radio.receive
+    if timed-out:
+      print "LILYGO_RX_TIMEOUT"
+    else:
       print "LILYGO_RX $(packet.payload.to-string) RSSI=$(packet.rssi) SNR=$(packet.snr)"
       sleep --ms=250
       radio.transmit "pong-from-lilygo"
       print "LILYGO_TX"
-    else:
-      print "LILYGO_RX_TIMEOUT"
   finally:
     radio.close
     device.close

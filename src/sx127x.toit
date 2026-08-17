@@ -132,32 +132,26 @@ class Sx127x implements radio.Radio:
       write-register_ REG-PAYLOAD-LENGTH_ payload.byte-size
       set-mode_ MODE-TX_
       try:
-        deadline-us := Time.monotonic-us + 15_000 * 1_000
-        wait-for-irq_ IRQ-TX-DONE_ deadline-us
+        wait-for-irq_ IRQ-TX-DONE_
       finally:
         write-register_ REG-IRQ-FLAGS_ 0xff
         set-mode_ MODE-STANDBY_
 
   /** See $radio.Radio.receive. */
-  receive --timeout-ms/int?=null -> radio.Packet?:
+  receive -> radio.Packet:
     return mutex_.do:
       ensure-open_
       write-register_ REG-DIO-MAPPING-1_ 0x00
       write-register_ REG-IRQ-FLAGS_ 0xff
       set-mode_ MODE-RX-CONTINUOUS_
-      deadline := timeout-ms and (Time.monotonic-us + timeout-ms * 1_000)
       try:
         while true:
           irq := read-register_ REG-IRQ-FLAGS_
           if (irq & IRQ-VALID-HEADER_) != 0:
             write-register_ REG-IRQ-FLAGS_ IRQ-VALID-HEADER_
-            if deadline:
-              deadline = Time.monotonic-us +
-                  (radio.maximum-packet-airtime-us_ configuration_)
           if (irq & IRQ-RX-DONE_) != 0:
             write-register_ REG-IRQ-FLAGS_ irq
             if (irq & IRQ-PAYLOAD-CRC-ERROR_) != 0:
-              if deadline and Time.monotonic-us >= deadline: return null
               continue
             size := read-register_ REG-RX-NB-BYTES_
             address := read-register_ REG-FIFO-RX-CURRENT-ADDR_
@@ -169,7 +163,6 @@ class Sx127x implements radio.Radio:
             rssi := rssi-offset + (read-register_ REG-PKT-RSSI-VALUE_).to-float
             if snr < 0: rssi += snr
             return radio.Packet payload rssi snr
-          if deadline and Time.monotonic-us >= deadline: return null
           sleep-ms_ 1
       finally:
         set-mode_ MODE-STANDBY_
@@ -198,8 +191,12 @@ class Sx127x implements radio.Radio:
         close-pins_
 
   close-pins_ -> none:
-    if dio0_: dio0_.close
-    if reset_: reset_.close
+    if dio0_:
+      dio0_.close
+      dio0_ = null
+    if reset_:
+      reset_.close
+      reset_ = null
 
   reset-radio_ -> none:
     reset_.set 0
@@ -255,14 +252,10 @@ class Sx127x implements radio.Radio:
         : (milliamps + 30) / 10
     write-register_ REG-OCP_ (0x20 | (trim & 0x1f))
 
-  wait-for-irq_ mask/int deadline-us/int -> none:
+  wait-for-irq_ mask/int -> none:
     while ((read-register_ REG-IRQ-FLAGS_) & mask) == 0:
-      remaining := deadline-us - Time.monotonic-us
-      if remaining <= 0: throw "LORA_TX_TIMEOUT"
       if dio0_:
-        exception := catch --unwind=(: it != DEADLINE-EXCEEDED-ERROR):
-          with-timeout --us=remaining: dio0_.wait-for 1
-        if exception: throw "LORA_TX_TIMEOUT"
+        dio0_.wait-for 1
       else:
         sleep-ms_ 1
 

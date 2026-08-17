@@ -37,10 +37,6 @@ main:
 See `examples/heltec-ping.toit` and `examples/lilygo-pong.toit` for complete
 resource cleanup and a bidirectional test.
 
-The `toitlang/qemu` source and releases were also checked. They do not model an
-SX126x, SX127x, or LoRa peripheral, so real-board tests provide the useful
-hardware coverage here.
-
 ## Verification
 
 ```sh

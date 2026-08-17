@@ -5,4 +5,4 @@
 import .probe
 
 main:
-  probe-sx126x 12 13 9 10 11 8
+  probe-sx126x --reset=12 --busy=13 --clock=9 --mosi=10 --miso=11 --cs=8
