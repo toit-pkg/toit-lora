@@ -11,20 +11,20 @@ main args:
   if family == "sx126x":
     if args.size != 7: usage_
     probe-sx126x
-        --reset=(int.parse args[1])
-        --busy=(int.parse args[2])
-        --clock=(int.parse args[3])
-        --mosi=(int.parse args[4])
-        --miso=(int.parse args[5])
-        --cs=(int.parse args[6])
+        --reset=int.parse args[1]
+        --busy=int.parse args[2]
+        --clock=int.parse args[3]
+        --mosi=int.parse args[4]
+        --miso=int.parse args[5]
+        --cs=int.parse args[6]
   else if family == "sx127x":
     if args.size != 6: usage_
     probe-sx127x
-        --reset=(int.parse args[1])
-        --clock=(int.parse args[2])
-        --mosi=(int.parse args[3])
-        --miso=(int.parse args[4])
-        --cs=(int.parse args[5])
+        --reset=int.parse args[1]
+        --clock=int.parse args[2]
+        --mosi=int.parse args[3]
+        --miso=int.parse args[4]
+        --cs=int.parse args[5]
   else:
     usage_
 
