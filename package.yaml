@@ -1,4 +1,4 @@
 name: lora
-description: LoRa radio drivers for the Semtech SX126x and SX127x families.
+description: LoRa radio drivers and LoRaWAN Class A support.
 environment:
   sdk: ^2.0.0-alpha.197

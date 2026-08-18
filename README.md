@@ -68,7 +68,8 @@ Direct use remains available and does not import `system.services`.
 
 ## Packages
 
-- The root package contains the plain LoRa drivers and raw service API.
+- The package contains the plain LoRa drivers, raw service API, and LoRaWAN
+  support under `lora.lorawan`.
 - `service/radio.toit` is a board-independent provider container configured
   with a radio family, pins, and LoRa PHY settings.
 
