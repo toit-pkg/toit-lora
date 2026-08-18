@@ -104,15 +104,7 @@ join-accept-with-channel-list-test:
   authenticated[0] = 0x20
   authenticated.replace 1 plaintext 0 28
   plaintext.replace 28 (crypto.join-mic key authenticated)
-  cipher := aes.AesEcb.decryptor key
-  encrypted := ByteArray 32
-  try:
-    2.repeat: |index|
-      offset := index * 16
-      encrypted.replace offset
-          cipher.decrypt plaintext[offset..offset + 16]
-  finally:
-    cipher.close
+  encrypted := aes-decrypt_ key plaintext
   frame := ByteArray 33
   frame[0] = 0x20
   frame.replace 1 encrypted
@@ -173,3 +165,12 @@ region-test:
   expect-equals 7 us-downlink.spreading-factor
   expect-equals 500_000 us-downlink.bandwidth
   expect-equals 925_100_000 us-downlink.frequency
+
+aes-decrypt_ -> ByteArray
+    key/ByteArray
+    input/ByteArray:
+  cipher := aes.AesEcb.decryptor key
+  try:
+    return cipher.decrypt input
+  finally:
+    cipher.close

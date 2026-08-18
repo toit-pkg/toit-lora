@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 import crypto.aes as aes
+import crypto.cmac as sdk-cmac
 import io
 
 /** LoRaWAN uplink direction value. */
@@ -18,29 +19,7 @@ cmac -> ByteArray
     key/ByteArray
     message/ByteArray:
   validate-key_ key
-  zero := ByteArray 16
-  l := aes-block_ key zero
-  k1 := subkey_ l
-  k2 := subkey_ k1
-  complete := message.size > 0 and (message.size % 16) == 0
-  block-count := max 1 ((message.size + 15) / 16)
-  last := ByteArray 16
-  if complete:
-    last.replace 0 message (message.size - 16) message.size
-    xor-in-place_ last k1
-  else:
-    remainder := message.size % 16
-    if remainder > 0:
-      last.replace 0 message (message.size - remainder) message.size
-    last[remainder] = 0x80
-    xor-in-place_ last k2
-  state := ByteArray 16
-  (block-count - 1).repeat: |index|
-    block := message[index * 16..index * 16 + 16]
-    xor-in-place_ block state
-    state = aes-block_ key block
-  xor-in-place_ last state
-  return aes-block_ key last
+  return sdk-cmac.cmac --key=key message
 
 /**
 Computes a four-byte LoRaWAN data-frame MIC.
@@ -168,32 +147,9 @@ aes-crypt-blocks_ -> ByteArray
       ? aes.AesEcb.encryptor key
       : aes.AesEcb.decryptor key
   try:
-    result := ByteArray input.size
-    (input.size / 16).repeat: |index|
-      offset := index * 16
-      block := input[offset..offset + 16]
-      transformed := encrypt ? cipher.encrypt block : cipher.decrypt block
-      result.replace offset transformed
-    return result
+    return encrypt ? cipher.encrypt input : cipher.decrypt input
   finally:
     cipher.close
-
-subkey_ -> ByteArray
-    input/ByteArray:
-  output := ByteArray 16
-  carry := 0
-  16.repeat: |offset|
-    index := 15 - offset
-    value := input[index]
-    output[index] = ((value << 1) & 0xff) | carry
-    carry = (value >> 7) & 1
-  if (input[0] & 0x80) != 0: output[15] ^= 0x87
-  return output
-
-xor-in-place_ -> none
-    target/ByteArray
-    other/ByteArray:
-  target.size.repeat: |index| target[index] ^= other[index]
 
 validate-key_ -> none
     key/ByteArray:

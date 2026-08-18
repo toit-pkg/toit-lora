@@ -1,4 +1,4 @@
-sdk: ^2.0.0-alpha.197
+sdk: ^2.0.0-alpha.198
 prefixes:
   bme280: github.com/toitware/bme280-driver-1
   lora: toit-lora
