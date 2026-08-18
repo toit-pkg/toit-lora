@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "LoRa radio service configuration",
+  "type": "object",
+  "required": ["radio", "spi-clock", "spi-mosi", "spi-miso", "spi-cs"],
+  "additionalProperties": false,
+  "properties": {
+    "radio": {
+      "type": "string",
+      "enum": ["sx1262", "sx127x"]
+    },
+    "spi-clock": {"type": "integer", "minimum": 0},
+    "spi-mosi": {"type": "integer", "minimum": 0},
+    "spi-miso": {"type": "integer", "minimum": 0},
+    "spi-cs": {"type": "integer", "minimum": 0},
+    "spi-frequency": {"type": "integer", "minimum": 1, "default": 4000000},
+    "reset": {"type": "integer", "minimum": 0},
+    "busy": {"type": "integer", "minimum": 0},
+    "dio0": {"type": "integer", "minimum": 0},
+    "dio1": {"type": "integer", "minimum": 0},
+    "dio2-rf-switch": {"type": "boolean", "default": false},
+    "tcxo-voltage": {"type": "integer", "minimum": 1600, "maximum": 3300},
+    "frequency": {"type": "integer", "minimum": 137000000, "maximum": 1020000000, "default": 868100000},
+    "bandwidth": {"type": "integer", "minimum": 7800, "maximum": 500000, "default": 125000},
+    "spreading-factor": {"type": "integer", "minimum": 7, "maximum": 12, "default": 7},
+    "coding-rate": {"type": "integer", "minimum": 5, "maximum": 8, "default": 5},
+    "preamble-length": {"type": "integer", "minimum": 4, "maximum": 65535, "default": 8},
+    "crc": {"type": "boolean", "default": true},
+    "invert-iq": {"type": "boolean", "default": false},
+    "sync-word": {"type": "integer", "minimum": 0, "maximum": 255, "default": 18},
+    "tx-power": {"type": "integer", "minimum": -9, "maximum": 22, "default": 14}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"radio": {"const": "sx1262"}}},
+      "then": {"required": ["busy", "dio1"]}
+    },
+    {
+      "if": {"properties": {"radio": {"const": "sx127x"}}},
+      "then": {"required": ["dio0"]}
+    }
+  ]
+}
