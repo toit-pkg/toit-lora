@@ -34,25 +34,25 @@ class RadioServiceProvider extends services.ServiceProvider
       if clients_ == 0: close-radio_
 
   handle index/int arguments/any --gid/int --client/int -> any:
-    return mutex_.do:
+    mutex_.do:
       radio := ensure-radio_
       if index == api.TRANSMIT-INDEX-v1:
-        continue.do radio.transmit arguments
+        return radio.transmit arguments
       if index == api.RECEIVE-INDEX-v1:
         packet := receive_ radio arguments
-        continue.do packet ? [packet.payload, packet.rssi, packet.snr] : null
+        return packet ? [packet.payload, packet.rssi, packet.snr] : null
       if index == api.STANDBY-INDEX-v1:
-        continue.do radio.standby
+        return radio.standby
       if index == api.SLEEP-INDEX-v1:
-        continue.do radio.sleep
+        return radio.sleep
       unreachable
+    unreachable
 
   receive_ radio/lora.Radio timeout-ms/int? -> lora.Packet?:
     if not timeout-ms: return radio.receive
-    packet/lora.Packet? := null
-    timed-out := catch --unwind=(: it != DEADLINE-EXCEEDED-ERROR):
-      with-timeout --ms=timeout-ms: packet = radio.receive
-    return timed-out ? null : packet
+    catch --unwind=(: it != DEADLINE-EXCEEDED-ERROR):
+      with-timeout --ms=timeout-ms: return radio.receive
+    return null
 
   ensure-radio_ -> lora.Radio:
     existing := radio_
