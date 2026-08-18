@@ -39,16 +39,17 @@ main:
 The service API's `v1` is independent of the implemented LoRaWAN protocol
 revision, which is currently 1.0.x.
 
-In this combined driver repository, `service/lorawan.toit` is the concrete,
-board-independent provider container. Supply the radio family and pins as
-configuration. For example, the MoleNet v7.1 wiring is:
+In this combined driver repository, `service/lorawan.toit` is a concrete,
+board-independent provider container. Supply the radio family and wiring; for
+example, for a Heltec WiFi LoRa 32 V3:
 
 ```sh
 jag container install lorawan service/lorawan.toit \
     --device DEVICE \
     -D radio=sx1262 \
-    -D spi-clock=14 -D spi-mosi=47 -D spi-miso=21 -D spi-cs=48 \
-    -D reset=15 -D busy=39 -D dio1=46 -D dio2-rf-switch=true \
+    -D spi-clock=9 -D spi-mosi=10 -D spi-miso=11 -D spi-cs=8 \
+    -D reset=12 -D busy=13 -D dio1=14 \
+    -D dio2-rf-switch=true -D tcxo-voltage=1800 \
     -D region=eu868 \
     -D app-key=APP_KEY \
     -D join-eui=JOIN_EUI \
