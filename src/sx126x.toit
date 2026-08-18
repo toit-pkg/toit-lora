@@ -327,11 +327,13 @@ class Sx1262 implements radio.Radio:
       if dio1_:
         if remaining != null:
           caller-deadline := Task.current.deadline
-          exception := catch --unwind=(: it != DEADLINE-EXCEEDED-ERROR):
-            with-timeout --us=remaining: dio1_.wait-for 1
+          exception := catch
+            --unwind=:
+              it != DEADLINE-EXCEEDED-ERROR or
+                  (caller-deadline and caller-deadline <= deadline-us)
+            :
+              with-timeout --us=remaining: dio1_.wait-for 1
           if exception:
-            if caller-deadline and caller-deadline <= deadline-us:
-              rethrow exception.value exception.trace
             return IRQ-TIMEOUT_
         else:
           dio1_.wait-for 1
@@ -343,11 +345,13 @@ class Sx1262 implements radio.Radio:
     if busy_.get == 0: return
     internal-deadline := Time.monotonic-us + BUSY-TIMEOUT-MS_ * 1_000
     caller-deadline := Task.current.deadline
-    exception := catch --unwind=(: it != DEADLINE-EXCEEDED-ERROR):
-      with-timeout --ms=BUSY-TIMEOUT-MS_: busy_.wait-for 0
+    exception := catch
+      --unwind=:
+        it != DEADLINE-EXCEEDED-ERROR or
+            (caller-deadline and caller-deadline <= internal-deadline)
+      :
+        with-timeout --ms=BUSY-TIMEOUT-MS_: busy_.wait-for 0
     if exception:
-      if caller-deadline and caller-deadline <= internal-deadline:
-        rethrow exception.value exception.trace
       throw "SX126X_BUSY_TIMEOUT"
 
   write-command_ -> none
