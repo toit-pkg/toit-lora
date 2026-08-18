@@ -12,5 +12,10 @@ main:
   try:
     radio.transmit "hello-from-service-client"
     print "LORA_SERVICE_TX_DONE"
+    packet := radio.receive --timeout-ms=5_000
+    if packet:
+      print "LORA_SERVICE_RX $(packet.payload.to-string) RSSI=$(packet.rssi) SNR=$(packet.snr)"
+    else:
+      print "LORA_SERVICE_RX_TIMEOUT"
   finally:
     radio.close

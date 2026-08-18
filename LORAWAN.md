@@ -88,6 +88,14 @@ implemented. The EU868/US915 defaults are suitable for initial interoperability
 work, not a substitute for regional compliance and LoRa Alliance certification
 testing.
 
+## MoleNet sensor example
+
+`examples/molenet-bme280.toit` reads the MoleNet v7.1 onboard BME280 over I2C
+and sends temperature on application port 1 through the LoRaWAN service. Its
+two-byte payload is a signed, big-endian count of hundredths of a degree
+Celsius. Paste `examples/molenet-bme280-decoder.js` into The Things Stack's
+uplink payload formatter to expose the value as `temperature_c`.
+
 Run the host-side protocol and receive-window tests with:
 
 ```
