@@ -3,6 +3,7 @@
 // found in the tests/LICENSE file.
 
 import expect show *
+import core.timer as timer
 import io
 import monitor
 
@@ -23,7 +24,7 @@ class RecordingRadio implements lora.Radio:
   receive --header-timeout-ms/int?=null -> lora.Packet?:
     receive-times.add Time.monotonic-us
     if header-timeout-ms:
-      sleep-ms_ header-timeout-ms
+      timer.sleep --ms=header-timeout-ms
       return null
     receive-signal_.wait
     unreachable
@@ -76,6 +77,3 @@ caller-deadline-is-not-swallowed-test:
 
   expect-throw DEADLINE-EXCEEDED-ERROR:
     with-timeout --ms=20: endpoint.send #[1]
-
-sleep-ms_ milliseconds/int -> none:
-  sleep --ms=milliseconds
