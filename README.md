@@ -4,23 +4,6 @@ Clean LoRa packet-radio drivers for Semtech SX126x and SX127x transceivers.
 The two chip families implement the same blocking `Radio` API while retaining
 their different command/register transports internally.
 
-## Hardware compatibility
-
-The drivers are board-independent. Any ESP32 board with a supported SX126x or
-SX127x radio can use them by supplying its SPI and control-pin wiring; no board
-profile is required. The following boards are tested examples, not an
-exhaustive compatibility list:
-
-| Board | MCU | Radio | SPI | Control |
-| --- | --- | --- | --- | --- |
-| Heltec WiFi LoRa 32 V3 | ESP32-S3 | SX1262 | SCK 9, MOSI 10, MISO 11, CS 8 | RESET 12, BUSY 13, DIO1 14, DIO2 RF switch, 1.8 V DIO3 TCXO |
-| LILYGO T3 LoRa32 V1.6 | ESP32 | SX1276 | SCK 5, MOSI 27, MISO 19, CS 18 | RESET 23, DIO0 26 |
-| MoleNet v7.1 | ESP32-S3 | RA-01SH (SX1262) | SCK 14, MOSI 47, MISO 21, CS 48 | RESET 15, BUSY 39, DIO1 46, DIO2 RF switch, crystal oscillator |
-
-The boards were probed from Toit and exchanged packets at 868.1 MHz. In
-particular, the MoleNet SX1262 and LILYGO SX1276 completed a bidirectional
-ping/pong, covering both driver families with different radios.
-
 ## Direct use
 
 ```toit
