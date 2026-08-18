@@ -1,6 +1,6 @@
 // Copyright (C) 2026 Toit contributors.
 // Use of this source code is governed by a BSD0-style license that can be
-// found in the examples/LICENSE file.
+// found in the tests/LICENSE file.
 
 import lora.lorawan.end-device
 

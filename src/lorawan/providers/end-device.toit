@@ -120,15 +120,16 @@ class EndDeviceServiceProvider extends services.ServiceProvider
       arguments/any
       --gid/int
       --client/int:
-    return mutex_.do:
+    mutex_.do:
       end-device := ensure-end-device_
       if index == api.ACTIVATED-INDEX-v1:
-        continue.do end-device.session != null
+        return end-device.session != null
       if index == api.JOIN-INDEX-v1:
-        continue.do join_ end-device
+        return join_ end-device
       if index == api.SEND-INDEX-v1:
-        continue.do send_ end-device arguments
+        return send_ end-device arguments
       unreachable
+    unreachable
 
   join_ end-device/device.ClassA -> bool:
     if end-device.session: return true
