@@ -70,8 +70,12 @@ Direct use remains available and does not import `system.services`.
 
 - The package contains the plain LoRa drivers, raw service API, and LoRaWAN
   support under `lora.lorawan`.
-- `service/radio.toit` is a board-independent provider container configured
-  with a radio family, pins, and LoRa PHY settings.
+- `service/` contains board-independent raw LoRa and LoRaWAN provider
+  containers configured with a radio family and pins. The timing-sensitive
+  LoRaWAN provider owns the plain radio directly rather than calling the
+  raw-radio service. Both providers remain installed while opening radio
+  hardware only for active clients. The LoRaWAN service stores state in the
+  qualified flash bucket path `toit.io/lorawan/<device-eui>` by default.
 
 ## Verification
 

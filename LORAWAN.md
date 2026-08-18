@@ -17,6 +17,59 @@ Implemented:
 The Class A end device uses the package's board-independent `lora.Radio`
 interface and works with either SX126x or SX127x drivers.
 
+## End-device service
+
+`lora.lorawan.end-device` exposes the Class A device through a versioned service.
+The provider owns the physical radio, OTAA credentials, DevNonce, session keys,
+and frame counters. It serializes calls from all client containers, so an
+application only needs to join and send:
+
+```toit
+import lora.lorawan.end-device
+
+main:
+  device := end-device.v1
+  try:
+    if not device.activated and not device.join: return
+    device.send "hello" --port=1
+  finally:
+    device.close
+```
+
+The service API's `v1` is independent of the implemented LoRaWAN protocol
+revision, which is currently 1.0.x.
+
+In this combined driver repository, `service/lorawan.toit` is a concrete,
+board-independent provider container. Supply the radio family and wiring; for
+example, for a Heltec WiFi LoRa 32 V3:
+
+```sh
+jag container install lorawan service/lorawan.toit \
+    --device DEVICE \
+    -D radio=sx1262 \
+    -D spi-clock=9 -D spi-mosi=10 -D spi-miso=11 -D spi-cs=8 \
+    -D reset=12 -D busy=13 -D dio1=14 \
+    -D dio2-rf-switch=true -D tcxo-voltage=1800 \
+    -D region=eu868 \
+    -D app-key=APP_KEY \
+    -D join-eui=JOIN_EUI \
+    -D device-eui=DEVICE_EUI
+
+jag run examples/lorawan-service-client.toit --device DEVICE
+```
+
+The provider remains installed indefinitely. It opens and configures the radio
+on the first client operation, shares it between connected clients, and closes
+the hardware after the last client disconnects.
+
+For production deployment, attach the credentials as protected container
+configuration rather than placing secrets in shell history. The provider uses
+a device-specific `toit.io/lorawan/<device-eui>` flash bucket by default. It
+reserves each DevNonce before transmitting the Join-Request, saves a joined
+session before exposing it, and persists each uplink counter before radio
+transmission. An authenticated downlink counter is committed before the
+downlink is returned to a client.
+
 The OTAA example reads `app-key`, `join-eui`, `device-eui`, and `device-nonce`
 from Jaguar defines. No device identity or root key is compiled into the
 package. Although an all-zero JoinEUI can be valid for a particular network
@@ -25,14 +78,15 @@ explicitly.
 
 For LoRaWAN 1.0.4, DevNonce is a persistent 16-bit counter. Increment and
 persist it *before* every Join-Request; reusing a value with the same JoinEUI
-causes a compliant Join Server to reject the request. The example accepts the
-counter as a define so that it does not pretend to provide durable storage.
+causes a compliant Join Server to reject the request. Direct users remain
+responsible for this state; the service provider handles it automatically.
 
-Applications must persist frame counters and session keys before production
-use. Duty-cycle scheduling, ADR command processing, channel-mask MAC commands,
-multicast, Class B/C, LoRaWAN 1.1, and certification are not yet implemented.
-The EU868/US915 defaults are suitable for initial interoperability work, not a
-substitute for regional compliance and LoRa Alliance certification testing.
+Direct applications must persist frame counters and session keys before
+production use. Duty-cycle scheduling, ADR command processing, channel-mask
+MAC commands, multicast, Class B/C, LoRaWAN 1.1, and certification are not yet
+implemented. The EU868/US915 defaults are suitable for initial interoperability
+work, not a substitute for regional compliance and LoRa Alliance certification
+testing.
 
 Run the host-side protocol and receive-window tests with:
 

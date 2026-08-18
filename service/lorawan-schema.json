@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "LoRaWAN end-device service configuration",
+  "type": "object",
+  "required": [
+    "radio", "spi-clock", "spi-mosi", "spi-miso", "spi-cs",
+    "region", "app-key", "join-eui", "device-eui"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "radio": {
+      "type": "string",
+      "enum": ["sx1262", "sx127x"]
+    },
+    "spi-clock": {"type": "integer", "minimum": 0},
+    "spi-mosi": {"type": "integer", "minimum": 0},
+    "spi-miso": {"type": "integer", "minimum": 0},
+    "spi-cs": {"type": "integer", "minimum": 0},
+    "spi-frequency": {"type": "integer", "minimum": 1, "default": 4000000},
+    "reset": {"type": "integer", "minimum": 0},
+    "busy": {"type": "integer", "minimum": 0},
+    "dio0": {"type": "integer", "minimum": 0},
+    "dio1": {"type": "integer", "minimum": 0},
+    "dio2-rf-switch": {"type": "boolean", "default": false},
+    "tcxo-voltage": {"type": "integer", "minimum": 1600, "maximum": 3300},
+    "region": {
+      "type": "string",
+      "enum": ["eu868", "us915"]
+    },
+    "app-key": {
+      "type": "string",
+      "pattern": "^[0-9A-Fa-f]{32}$"
+    },
+    "join-eui": {
+      "type": "string",
+      "pattern": "^[0-9A-Fa-f]{16}$"
+    },
+    "device-eui": {
+      "type": "string",
+      "pattern": "^[0-9A-Fa-f]{16}$"
+    },
+    "initial-device-nonce": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 65535,
+      "default": 0
+    },
+    "data-rate": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 13,
+      "default": 0
+    },
+    "tx-power": {
+      "type": "integer",
+      "minimum": -9,
+      "maximum": 22,
+      "default": 14
+    },
+    "receive-window-ms": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 1000
+    },
+    "storage-path": {
+      "type": "string",
+      "description": "Qualified flash bucket path for DevNonce, session keys, and frame counters. Defaults to toit.io/lorawan/<device-eui>."
+    },
+    "session-key": {
+      "type": "string",
+      "default": "session",
+      "description": "Flash bucket key for the serialized LoRaWAN session."
+    },
+    "next-device-nonce-key": {
+      "type": "string",
+      "default": "next-device-nonce",
+      "description": "Flash bucket key for the next DevNonce value."
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"radio": {"const": "sx1262"}}},
+      "then": {"required": ["busy", "dio1"]}
+    },
+    {
+      "if": {"properties": {"radio": {"const": "sx127x"}}},
+      "then": {"required": ["dio0"]}
+    }
+  ]
+}
