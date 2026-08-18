@@ -4,7 +4,12 @@ Clean LoRa packet-radio drivers for Semtech SX126x and SX127x transceivers.
 The two chip families implement the same blocking `Radio` API while retaining
 their different command/register transports internally.
 
-## Supported hardware
+## Hardware compatibility
+
+The drivers are board-independent. Any ESP32 board with a supported SX126x or
+SX127x radio can use them by supplying its SPI and control-pin wiring; no board
+profile is required. The following boards are tested examples, not an
+exhaustive compatibility list:
 
 | Board | MCU | Radio | SPI | Control |
 | --- | --- | --- | --- | --- |
