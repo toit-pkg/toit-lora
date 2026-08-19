@@ -1,4 +1,4 @@
-sdk: ^2.0.0-alpha.197
+sdk: ^2.0.0-alpha.198
 prefixes:
   lora: toit-lora
 packages:
